@@ -3,7 +3,7 @@
 
 [![Build Status](https://travis-ci.org/WagicProject/wagic.png?branch=master)](https://travis-ci.org/WagicProject/wagic)
 [![Build status](https://ci.appveyor.com/api/projects/status/7j4fbr6m62aqej59/branch/master)](https://ci.appveyor.com/project/xawotihs/wagic/branch/master)
-
+[![Coverage Status](https://coveralls.io/repos/WagicProject/wagic/badge.png?branch=master)](https://coveralls.io/r/WagicProject/wagic?branch=master)
 
 ## Description
 
@@ -20,7 +20,7 @@ It is highly customizable and allows the player to tweak the rules / create thei
 
 Info, downloads, discussions and more at http://wololo.net/forum/index.php
 
--![alt text](http://wololo.net/wagic/wp-content/uploads/2009/10/shop.jpg "Screenshot")
+![alt text](http://wololo.net/wagic/wp-content/uploads/2009/10/shop.jpg "Screenshot")
 
 
 

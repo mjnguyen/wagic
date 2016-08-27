@@ -72,6 +72,7 @@ class Constants
   static const string kManaRed;     
   static const string kManaBlack;   
   static const string kManaWhite;
+  static const string kManaWaste;
 
   // alternative costs constants
 
@@ -81,6 +82,7 @@ class Constants
   static const string kRetraceKeyword;
   static const string kKickerKeyword;
   static const string kMorphKeyword;
+  static const string kBestowKeyword;
 
   // used for deck statistics
   static const int STATS_FOR_TURNS = 8;
@@ -94,9 +96,11 @@ class Constants
       MTG_COLOR_RED = 3,
       MTG_COLOR_BLACK = 4,
       MTG_COLOR_WHITE = 5,
-      MTG_COLOR_LAND = 6,
+      MTG_COLOR_WASTE = 6,
+      MTG_COLOR_LAND = 7,
+      
 
-      MTG_NB_COLORS = 7,
+      MTG_NB_COLORS = 8,
 
 
       MTG_UNCOLORED = 0,
@@ -219,8 +223,45 @@ class Constants
       LURE = 101,
       NOLEGEND = 102,
       CANPLAYFROMGRAVEYARD = 103,
-      NB_BASIC_ABILITIES = 104,
-
+      TOKENIZER = 104,
+      MYGRAVEEXILER = 105,
+      OPPGRAVEEXILER = 106,
+      LIBRARYDEATH = 107,
+      SHUFFLELIBRARYDEATH = 108,
+      OFFERING = 109,
+      EVADEBIGGER = 110,
+      SPELLMASTERY = 111,
+      NOLIFEGAIN = 112,
+      NOLIFEGAINOPPONENT = 113,
+      AURAWARD = 114,
+      MADNESS = 115,
+      PROTECTIONFROMCOLOREDSPELLS = 116,
+      MYGCREATUREEXILER = 117,
+      OPPGCREATUREEXILER = 118,
+      PAYZERO = 119,
+      TRINISPHERE = 120,
+      CANPLAYFROMEXILE = 121,
+      LIBRARYEATER = 122,
+      DEVOID = 123,
+      CANTCHANGELIFE = 124,
+      COMBATTOUGHNESS = 125,
+      CANTPAYLIFE = 126,
+      CANTBESACRIFIED = 127,
+      SKULK = 128,
+      MENACE = 129,
+      NOSOLO = 130,//cant attack alone
+      MUSTBLOCK = 131,//blocks each turn
+      DETHRONE = 132,
+      OVERLOAD = 133,
+      SHACKLER = 134,
+      FLYERSONLY = 135,//can attack only if it has flying
+      TEMPFLASHBACK = 136,
+      NOLEGENDRULE =137,
+      CANTTRANSFORM =138,
+      ASFLASH =139,
+      CONDUITED = 140,
+      CANBLOCKTAPPED = 141,
+      NB_BASIC_ABILITIES = 142,
 
     RARITY_S = 'S',   //Special Rarity
     RARITY_M = 'M',   //Mythics
@@ -257,21 +298,21 @@ class Constants
     GRADE_UNSUPPORTED = 4,
     GRADE_DANGEROUS = 5,
 
-	ASKIP_NONE=0,
-	ASKIP_SAFE=1,
-	ASKIP_FULL=2,
-	
-	WHO_P=0,
-	WHO_O=1,
-	WHO_R=2,
-	
-	KICKER_ALWAYS=0,
-	KICKER_CHOICE=1,
-	
+    ASKIP_NONE=0,
+    ASKIP_SAFE=1,
+    ASKIP_FULL=2,
+    
+    WHO_P=0,
+    WHO_O=1,
+    WHO_R=2,
+    
+    KICKER_ALWAYS=0,
+    KICKER_CHOICE=1,
+    
   };
 
     enum
-	{
+    {
         NOT_CAST = 0,
         CAST_NORMALLY = 1,
         CAST_WITH_KICKER = 2,
@@ -281,6 +322,7 @@ class Constants
         CAST_WITH_RETRACE = 6,
         CAST_WITH_MORPH = 7,
         CAST_WITH_SUSPEND = 8,
+        CAST_WITH_BESTOW = 9,
 
         CAST_ALTERNATE = -1, //matches all alternate costs, including itself
         CAST_ALL = -2, // matches everything except NOT_CAST

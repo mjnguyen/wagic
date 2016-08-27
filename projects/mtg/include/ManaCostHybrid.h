@@ -19,6 +19,8 @@ public:
     string toString();
     int getConvertedCost();
     int getManaSymbols(int color);
+    int getManaSymbolsHybridMerged(int color);
+    void reduceValue(int color, int value);
     
     friend std::ostream& operator<<(std::ostream& out, ManaCostHybrid& m);
     friend std::ostream& operator<<(std::ostream& out, ManaCostHybrid* m);

@@ -1,0 +1,33 @@
+#Bug: Haste from legendary lords
+[INIT]
+FIRSTMAIN
+[PLAYER1]
+graveyard:Krosan Cloudscraper, Dragonlord Kolaghan, Clone
+hand:Living Death
+manapool:{2}{B}{B}{B}
+[PLAYER2]
+[DO]
+Living Death
+choice 0
+Dragonlord Kolaghan
+choice 0
+#begins
+next
+#attack
+next
+Clone
+Krosan Cloudscraper
+#block
+next
+#damage
+next
+#end
+eot
+[ASSERT]
+UNTAP
+[PLAYER1]
+inplay:Krosan Cloudscraper, Clone
+graveyard:Dragonlord Kolaghan, Living Death
+[PLAYER2]
+life:1
+[END]

@@ -1,5 +1,14 @@
 grade=borderline
 [card]
+name=Angel's Grace
+abilities=split second
+#the cantlose cannot seen by the gameobserver when used by emblem...
+auto=emblem transforms((,newability[lord(*|opponentbattlefield) cantwin],newability[lord(*|mybattlefield) cantlose],newability[this(controllerlife >= 1) reduceto:1])) ueot
+text=Split second (As long as this spell is on the stack, players can't cast spells or activate abilities that aren't mana abilities.) -- You can't lose the game this turn and your opponents can't win the game this turn. Until end of turn, damage that would reduce your life total to less than 1 reduces it to 1 instead.
+mana={W}
+type=Instant
+[/card]
+[card]
 name=Autumn Willow
 abilities=opponentshroud,shroud
 auto={G}:-shroud
@@ -12,36 +21,100 @@ power=4
 toughness=4
 [/card]
 [card]
-name=Aven Warhawk
-abilities=flying
-auto=foreach(bird|myhand) counter(1/1,1)
-auto=foreach(soldier|myhand) counter(1/1,1)
-text=Amplify 1 (As this creature enters the battlefield, put a +1/+1 counter on it for each Bird and/or Soldier card you reveal in your hand.) -- Flying
-mana={4}{W}
+name=Bearer of Silence
+abilities=flying,cantblock
+autostack=if casted(this) then pay({1}{c}) ability$!name(sacrifice) notatarget(creature|mybattlefield) sacrifice!$ opponent
+text=Devoid (This card has no color.) -- When you cast Bearer of Silence, you may pay {1}{C}. If you do, target opponent sacrifices a creature. ({C} represents colorless mana.) -- Flying -- Bearer of Silence can't block.
+mana={1}{B}
+abilities=devoid
 type=Creature
-subtype=Bird Soldier
+subtype=Eldrazi
 power=2
+toughness=1
+[/card]
+[card]
+name=Benthic Explorers
+auto=this(variable{olandg}>0) {Q(land[manag]|opponentbattlefield)}{T}:Add{G}
+auto=this(variable{olandu}>0) {Q(land[manau]|opponentbattlefield)}{T}:Add{U}
+auto=this(variable{olandr}>0) {Q(land[manar]|opponentbattlefield)}{T}:Add{R}
+auto=this(variable{olandb}>0) {Q(land[manab]|opponentbattlefield)}{T}:Add{B}
+auto=this(variable{olandw}>0) {Q(land[manaw]|opponentbattlefield)}{T}:Add{W}
+auto=this(variable{olandc}>0) {Q(land[cmana]|opponentbattlefield)}{T}:Add{C}
+text={T}, Untap a tapped land an opponent controls: Add one mana of any type that land could produce to your mana pool.
+mana={3}{U}
+type=Creature
+subtype=Merfolk Scout
+power=2
+toughness=4
+[/card]
+[card]
+name=Cemetery Puca
+text=Whenever a creature is put into a graveyard from the battlefield, you may pay {1}. If you do, Cemetery Puca becomes a copy of that creature and gains this ability.
+auto=@movedto(creature|graveyard) from(battlefield):all(trigger[from]) pay[[{1}]] copy
+mana={1}{UB}{UB}
+type=Creature
+subtype=Shapeshifter
+power=1
 toughness=2
 [/card]
 [card]
-name=Cinder Seer
-auto={2}{r}{t}:target(creature,Player) damage:type:*[red]:myhand
-text={2}{R}, {T}: Reveal any number of red cards in your hand. Cinder Seer deals X damage to target creature or player, where X is the number of cards revealed this way.
-mana={3}{R}
-type=Creature
-subtype=Human Wizard
-power=1
-toughness=1
+name=Conflux
+auto=ability$!name(white card) moveto(myhand) notatarget(*[white]|mylibrary)!$ controller
+auto=ability$!name(blue card) moveto(myhand) notatarget(*[blue]|mylibrary)!$ controller
+auto=ability$!name(black card) moveto(myhand) notatarget(*[black]|mylibrary)!$ controller
+auto=ability$!name(red card) moveto(myhand) notatarget(*[red]|mylibrary)!$ controller
+auto=ability$!name(green card) moveto(myhand) notatarget(*[green]|mylibrary)!$ controller
+text=Search your library for a white card, a blue card, a black card, a red card, and a green card. Reveal those cards and put them into your hand. Then shuffle your library.
+mana={3}{W}{U}{B}{R}{G}
+type=Sorcery
 [/card]
-#can target same creature
 [card]
 name=Consume Strength
+#can target same creature
 target=creature
 auto=2/2 ueot
 auto=target(creature) -2/-2 ueot
 text=Target creature gets +2/+2 until end of turn. Another target creature gets -2/-2 until end of turn.
 mana={1}{B}{G}
 type=Instant
+[/card]
+[card]
+name=Cryptoplasm
+auto=@each my upkeep:may copy target(other creature|battlefield)
+text=At the beginning of your upkeep, you may have Cryptoplasm become a copy of another target creature. If you do, Cryptoplasm gains this ability.
+mana={1}{U}{U}
+type=Creature
+subtype=Shapeshifter
+power=2
+toughness=2
+[/card]
+[card]
+name=Dimir Doppelganger
+auto={1}{U}{B}:target(creature|graveyard) moveto(exile) and!(copy)!
+text={1}{U}{B}: Exile target creature card from a graveyard. Dimir Doppelganger becomes a copy of that card and gains this ability.
+mana={1}{U}{B}
+type=Creature
+subtype=Shapeshifter
+power=0
+toughness=2
+[/card]
+[card]
+name=Eureka
+auto=ability$! moveto(ownerbattlefield) notatarget(<anyamount>artifact,creature,enchantment,land,planeswalker|myhand) !$ controller
+auto=ability$! moveto(ownerbattlefield) notatarget(<anyamount>artifact,creature,enchantment,land,planeswalker|myhand) !$ opponent
+text=Starting with you, each player may put a permanent card from his or her hand onto the battlefield. Repeat this process until no one puts a card onto the battlefield.
+mana={2}{G}{G}
+type=Sorcery
+[/card]
+[card]
+name=Exquisite Firecraft
+#nofizzle don't work with aslongas
+target=creature,player
+auto=damage:4
+auto=aslongas(*[instant;sorcery]|mygraveyard) nofizzle >1
+text=Exquisite Firecraft deals 4 damage to target creature or player. -- Spell mastery — If there are two or more instant and/or sorcery cards in your graveyard, Exquisite Firecraft can't be countered by spells or abilities.
+mana={1}{R}{R}
+type=Sorcery
 [/card]
 [card]
 name=Feral Hydra
@@ -56,25 +129,41 @@ auto={3}:counter(1/1)
 #Not all player can use ability
 [/card]
 [card]
-name=Ghastly Remains
-auto=foreach(zombie|myhand) counter(1/1,1)
-autograveyard={B}{B}{B}:moveTo(myhand) myUpkeepOnly
-text=Amplify 1 (As this creature enters the battlefield, put a +1/+1 counter on it for each Zombie card you reveal in your hand.) -- At the beginning of your upkeep, if Ghastly Remains is in your graveyard, you may pay {B}{B}{B}. If you do, return Ghastly Remains to your hand.
-mana={B}{B}{B}
+name=Flamekin Bladewhirl
+otherrestriction=type(*[elemental]|myhand)~lessthan~2
+other={3}{R}
+restriction=type(*[elemental]|myhand)~morethan~1
+text=As an additional cost to cast Flamekin Bladewhirl, reveal an Elemental card from your hand or pay {3}.
+mana={R}
 type=Creature
-subtype=Zombie
-power=0
-toughness=0
+subtype=Elemental Warrior
+power=2
+toughness=1
 [/card]
 [card]
-name=Glowering Rogon
-auto=foreach(beast|myhand) counter(1/1,1)
-text=Amplify 1 (As this creature enters the battlefield, put a +1/+1 counter on it for each Beast card you reveal in your hand.)
-mana={5}{G}
+name=Goldmeadow Stalwart
+otherrestriction=type(*[kithkin]|myhand)~lessthan~2
+other={3}{W}
+restriction=type(*[kithkin]|myhand)~morethan~1
+text=As an additional cost to cast Goldmeadow Stalwart, reveal a Kithkin card from your hand or pay {3}.
+mana={W}
 type=Creature
-subtype=Beast
+subtype=Kithkin Soldier
+power=2
+toughness=2
+[/card]
+[card]
+name=Goldnight Castigator
+#need doubler damage ability...
+abilities=flying,haste
+auto=@damaged(controller):damage:thatmuch controller
+auto=@damaged(this):damage:thatmuch all(this)
+text=Flying, haste -- If a source would deal damage to you, it deals double that damage to you instead. -- If a source would deal damage to Goldnight Castigator, it deals double that damage to Goldnight Castigator instead.
+mana={2}{R}{R}
+type=Creature
+subtype=Angel
 power=4
-toughness=4
+toughness=9
 [/card]
 [card]
 name=Govern the Guildless
@@ -86,15 +175,27 @@ mana={5}{U}
 type=Sorcery
 [/card]
 [card]
-name=Gravecrawler
-abilities=cantblock
-autograveyard=aslongas(zombie|myBattlefield) {B}:name(cast from graveyard) activate name(cast from graveyard) castcard(normal) assorcery
-text=Gravecrawler can't block. -- You may cast Gravecrawler from your graveyard as long as you control a Zombie.
-mana={B}
+name=Hellcarver Demon
+#you can't order the stack
+abilities=flying
+auto=@combatdamaged(player) from(this):sacrifice all(other *|mybattlefield) && discard:type:*:myhand && reveal:6 optionone all(*|reveal) moveto(exile) and!( if cantargetcard(*[-land]|*) then transforms((,newability[may activate castcard(normal)]])) oneshot )! optiononeend revealend
+text=Flying -- Whenever Hellcarver Demon deals combat damage to a player, sacrifice all other permanents you control and discard your hand. Exile the top six cards of your library. You may cast any number of nonland cards exiled this way without paying their mana costs.
+mana={3}{B}{B}{B}
 type=Creature
-subtype=Zombie
-power=2
-toughness=1
+subtype=Demon
+power=6
+toughness=6
+[/card]
+[card]
+name=Hypergenesis
+color=green
+restriction=turn:200
+mana={0}
+suspend(3)={1}{g}{g}
+auto=ability$! moveto(ownerbattlefield) notatarget(<anyamount>artifact,creature,enchantment,land|myhand) !$ controller
+auto=ability$! moveto(ownerbattlefield) notatarget(<anyamount>artifact,creature,enchantment,land|myhand) !$ opponent
+text=Suspend 3—{1}{G}{G} (Rather than cast this card from your hand, pay {1}{G}{G} and exile it with three time counters on it. At the beginning of your upkeep, remove a time counter. When the last is removed, cast it without paying its mana cost.) -- Starting with you, each player may put an artifact, creature, enchantment, or land card from his or her hand onto the battlefield. Repeat this process until no one puts a card onto the battlefield.
+type=Sorcery
 [/card]
 [card]
 name=Ivy Seer
@@ -170,6 +271,18 @@ power=3
 toughness=1
 [/card]
 [card]
+name=Qasali Ambusher
+abilities=reach,spellmastery
+other={0} name(cast for free)
+otherrestriction=type(creature[attacking]|opponentbattlefield)~morethan~0,type(forest|mybattlefield)~morethan~0,type(plains|mybattlefield)~morethan~0
+text=Reach -- If a creature is attacking you and you control a Forest and a Plains, you may cast Qasali Ambusher without paying its mana cost and as though it had flash.
+mana={1}{G}{W}
+type=Creature
+subtype=Cat Warrior
+power=2
+toughness=3
+[/card]
+[card]
 name=Rakdos Augermage
 abilities=first strike
 auto={T}:name(target opponent) target(opponent) donothing && all(this) transforms((,newability[ability$!name(discard) reject notatarget(*|opponenthand)!$ targetedplayer && ability$!name(discard) reject notatarget(*|opponenthand)!$ controller])) assorcery
@@ -181,12 +294,36 @@ power=3
 toughness=2
 [/card]
 [card]
+name=Rayne, Academy Chancellor
+#missing parser for player/controller/opponent
+auto=this(auras >= 1) transforms((,newability[@targeted(*|mybattlefield) from(*|opponentzones):draw:2]))
+auto=this(auras < 1) transforms((,newability[@targeted(*|mybattlefield) from(*|opponentzones):draw:1]))
+text=Whenever you or a permanent you control becomes the target of a spell or ability an opponent controls, you may draw a card. You may draw an additional card if Rayne, Academy Chancellor is enchanted.
+mana={2}{U}
+type=Legendary Creature
+subtype=Human Wizard
+power=1
+toughness=1
+[/card]
+[card]
 name=Recall
 auto=name(discard) notatarget(<xx>*|myhand) transforms((,newability[reject],newability[moveto(ownerhand) notatarget(*|mygraveyard)]))
 auto=moveto(exile) all(this)
 text=Discard X cards, then return a card from your graveyard to your hand for each card discarded this way. Exile Recall.
 mana={X}{X}{U}
 type=Sorcery
+[/card]
+[card]
+name=Relentless Dead
+auto=@movedTo(this|graveyard) from(battlefield):transforms((,newability[{B}:moveto(myhand)])) ueot
+auto=@movedTo(this|graveyard) from(battlefield):transforms((,newability[{X}:moveto(myhand) target(zombie[manacost=X]|mygraveyard)])) ueot
+text=Menace (This creature can't be blocked except by two or more creatures.) -- When Relentless Dead dies, you may pay {B}. If you do, return it to its owner's hand. -- When Relentless Dead dies, you may pay {X}. If you do, return another target Zombie creature card with converted mana cost X from your graveyard to the battlefield.
+mana={B}{B}
+abilities=menace
+type=Creature
+subtype=Zombie
+power=2
+toughness=2
 [/card]
 [card]
 name=Sacellum Godspeaker
@@ -247,13 +384,146 @@ mana={G}{W}
 type=Instant
 [/card]
 [card]
-name=Zombie Brute
-abilities=trample
-auto=foreach(zombie|myhand) counter(1/1,1)
-text=Amplify 1 (As this creature enters the battlefield, put a +1/+1 counter on it for each Zombie card you reveal in your hand.) -- Trample
-mana={6}{B}
+name=Shard Convergence
+auto=ability$!moveto(myhand) notatarget(*[plains]|mylibrary)!$ controller
+auto=ability$!moveto(myhand) notatarget(*[island]|mylibrary)!$ controller
+auto=ability$!moveto(myhand) notatarget(*[swamp]|mylibrary)!$ controller
+auto=ability$!moveto(myhand) notatarget(*[mountain]|mylibrary)!$ controller
+text=Search your library for a Plains card, an Island card, a Swamp card, and a Mountain card. Reveal those cards and put them into your hand. Then shuffle your library.
+mana={3}{G}
+type=Sorcery
+[/card]
+[card]
+name=Silvergill Adept
+otherrestriction=type(*[merfolk]|myhand)~lessthan~2
+other={4}{U}
+restriction=type(*[merfolk]|myhand)~morethan~1
+auto=draw:1
+text=As an additional cost to cast Silvergill Adept, reveal a Merfolk card from your hand or pay {3}. -- When Silvergill Adept enters the battlefield, draw a card.
+mana={1}{U}
 type=Creature
-subtype=Zombie
-power=5
+subtype=Merfolk Wizard
+power=2
+toughness=1
+[/card]
+[card]
+name=Squandered Resources
+auto=this(variable{plandg}>0) {S(land[manag]|mybattlefield)}:Add{G}
+auto=this(variable{plandu}>0) {S(land[manau]|mybattlefield)}:Add{U}
+auto=this(variable{plandr}>0) {S(land[manar]|mybattlefield)}:Add{R}
+auto=this(variable{plandb}>0) {S(land[manab]|mybattlefield)}:Add{B}
+auto=this(variable{plandw}>0) {S(land[manaw]|mybattlefield)}:Add{W}
+auto=this(variable{plandc}>0) {S(land[cmana]|mybattlefield)}:Add{C}
+text=Sacrifice a land: Add to your mana pool one mana of any type the sacrificed land could produce.
+mana={B}{G}
+type=Enchantment
+[/card]
+[card]
+name=Squeaking Pie Sneak
+abilities=fear
+otherrestriction=type(*[goblin]|myhand)~lessthan~2
+other={4}{B}
+restriction=type(*[goblin]|myhand)~morethan~1
+text=As an additional cost to cast Squeaking Pie Sneak, reveal a Goblin card from your hand or pay {3}. -- Fear (This creature can't be blocked except by artifact creatures and/or black creatures.)
+mana={1}{B}
+type=Creature
+subtype=Goblin Rogue
+power=2
+toughness=2
+[/card]
+[card]
+name=Surrak Dragonclaw
+abilities=flash,nofizzle
+#lord nofizzle doesn't seem to work
+auto=lord(*|mystack) nofizzle
+auto=lord(other creature|mybattlefield) trample
+text=Flash -- Surrak Dragonclaw can't be countered. -- Creature spells you control can't be countered. -- Other creatures you control have trample.
+mana={2}{G}{U}{R}
+type=Legendary Creature
+subtype=Human Warrior
+power=6
+toughness=6
+[/card]
+[card]
+name=Teferi, Mage of Zhalfir
+abilities=flash
+auto=lord(creature|mycastingzone) flash
+auto=this(variable{controllerturn}>0) maxCast(*)0 opponent
+text=Flash (You may cast this spell any time you could cast an instant.) -- Creature cards you own that aren't on the battlefield have flash. -- Each opponent can cast spells only any time he or she could cast a sorcery.
+mana={2}{U}{U}{U}
+type=Legendary Creature
+subtype=Human Wizard
+power=3
 toughness=4
+[/card]
+[card]
+name=Thespian's Stage
+auto={T}:Add{1}
+auto={2}{T}:copy target(land|battlefield)
+text={T}: Add {1} to your mana pool. -- {2}, {T}: Thespian's Stage becomes a copy of target land and gains this ability.
+type=Land
+[/card]
+[card]
+name=Trinisphere
+auto=this(untapped) lord(*[-land]|hand,library,exile,graveyard) trinisphere forcedalive
+text=As long as Trinisphere is untapped, each spell that would cost less than three mana to cast costs three mana to cast. (Additional mana in the cost may be paid with any color of mana or colorless mana. For example, a spell that would cost {1}{B} to cast costs {2}{B} to cast instead.)
+mana={3}
+type=Artifact
+[/card]
+[card]
+name=Uba Mask
+auto=replacedraw reveal:1 optionone all(*|reveal) moveto(exile) and!( transforms((,newability[canplayfromexile])) ueot)! optiononeend revealend
+auto=opponentreplacedraw reveal:1 revealzone(opponentlibrary) optionone all(*|reveal) moveto(exile) and!( transforms((,newability[canplayfromexile])) ueot)! optiononeend revealend
+text=If a player would draw a card, that player exiles that card face up instead. -- Each player may play cards he or she exiled with Uba Mask this turn.
+mana={4}
+type=Artifact
+[/card]
+[card]
+name=Unexpected Results
+auto=shuffle
+auto=reveal:1 optionone transforms((,newability[if type(land|reveal)~morethan~0 then moveto(ownerhand) && all(*[land]|reveal) moveto(ownerbattlefield)])) forever optiononeend optiontwo name(Put Back) target(<1>*[-land]|reveal) moveto(mylibrary) and!(transforms((,newability[may activate castcard(normal)])) oneshot)! optiontwoend revealend
+text=Shuffle your library, then reveal the top card. If it's a nonland card, you may cast it without paying its mana cost. If it's a land card, you may put it onto the battlefield and return Unexpected Results to its owner's hand.
+mana={2}{G}{U}
+type=Sorcery
+[/card]
+[card]
+name=Unstable Shapeshifter
+auto=@movedto(other creature|battlefield):all(trigger[from]) copy
+text=Whenever another creature enters the battlefield, Unstable Shapeshifter becomes a copy of that creature and gains this ability.
+mana={3}{U}
+type=Creature
+subtype=Shapeshifter
+power=0
+toughness=1
+[/card]
+[card]
+name=Venser's Diffusion
+target=*[-land]
+auto=moveTo(ownerhand)
+text=Return target nonland permanent or suspended card to its owner's hand.
+mana={2}{U}
+type=Instant
+[/card]
+[card]
+name=Wren's Run Vanquisher
+otherrestriction=type(*[elf]|myhand)~lessthan~2
+other={4}{G}
+restriction=type(*[elf]|myhand)~morethan~1
+abilities=deathtouch
+text=As an additional cost to cast Wren's Run Vanquisher, reveal an Elf card from your hand or pay {3}. -- Deathtouch (Any amount of damage this deals to a creature is enough to destroy it.)
+mana={1}{G}
+type=Creature
+subtype=Elf Warrior
+power=3
+toughness=3
+[/card]
+[card]
+name=Yixlid Jailer
+auto=lord(*|graveyard) loseabilities
+text=Cards in graveyards lose all abilities.
+mana={1}{B}
+type=Creature
+subtype=Zombie Wizard
+power=2
+toughness=1
 [/card]

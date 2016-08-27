@@ -2,6 +2,7 @@
 
 #include "Counters.h"
 #include "MTGCardInstance.h"
+#include "AllAbilities.h"
 
 Counter::Counter(MTGCardInstance * _target, int _power, int _toughness)
 {
@@ -56,8 +57,14 @@ int Counter::added()
 {
     if (power != 0 || toughness != 0)
     {
-        target->power += power;
-        target->addToToughness(toughness);
+        if(target->isSwitchedPT)
+        {
+            target->switchPT(false);
+            target->addcounter(power, toughness);
+            target->switchPT(true);
+        }
+        else
+            target->addcounter(power, toughness);
     }
     return 1;
 }
@@ -66,8 +73,14 @@ int Counter::removed()
 {
     if (power != 0 || toughness != 0)
     {
-        target->power -= power;
-        target->addToToughness(-toughness);
+        if(target->isSwitchedPT)
+        {
+            target->switchPT(false);
+            target->removecounter(power, toughness);
+            target->switchPT(true);
+        }
+        else
+        target->removecounter(power, toughness);
     }
     return 1;
 }
@@ -85,7 +98,7 @@ Counters::~Counters()
     }
 }
 
-int Counters::addCounter(const char * _name, int _power, int _toughness)
+int Counters::addCounter(const char * _name, int _power, int _toughness, bool _noevent)
 {
     /*420.5n If a permanent has both a +1/+1 counter and a -1/-1 counter on it, N +1/+1 and N -1/-1 counters are removed from it, where N is the smaller of the number of +1/+1 and -1/-1 counters on it.*/
     GameObserver *g = target->getObserver();
@@ -109,9 +122,12 @@ int Counters::addCounter(const char * _name, int _power, int _toughness)
         Counter * counter = NEW Counter(target, _name, _power, _toughness);
         counters.push_back(counter);
         counter->added();
-        WEvent * w = NEW WEventCounters(this,_name,_power,_toughness,true,false);
-        dynamic_cast<WEventCounters*>(w)->targetCard = this->target;
-        g->receiveEvent(w);
+        if (!_noevent)
+        {
+            WEvent * w = NEW WEventCounters(this,_name,_power,_toughness,true,false);
+            dynamic_cast<WEventCounters*>(w)->targetCard = this->target;
+            g->receiveEvent(w);
+        }
         mCount++;
         this->target->doDamageTest = 1;
         this->target->afterDamage();
@@ -122,7 +138,12 @@ int Counters::addCounter(const char * _name, int _power, int _toughness)
 
 int Counters::addCounter(int _power, int _toughness)
 {
-    return addCounter("", _power, _toughness);
+    return addCounter("", _power, _toughness, false);
+}
+
+int Counters::addCounter(int _power, int _toughness, bool _noevent)
+{
+    return addCounter("", _power, _toughness, _noevent);
 }
 
 int Counters::init()
@@ -167,10 +188,13 @@ int Counters::removeCounter(const char * _name, int _power, int _toughness)
             if (target->suspended && !target->counters->hasCounter("time",0,0))
             {
                 GameObserver * game = target->getObserver();
-                MTGCardInstance * copy = target->controller()->game->putInZone(target, target->currentZone, target->controller()->game->stack);
-
-                game->mLayers->stackLayer()->addSpell(copy, game->targetChooser, NULL,1, 0);
-                game->targetChooser = NULL;
+                MTGAbility *ac = NEW AACastCard(game, game->mLayers->actionLayer()->getMaxId(), target, target, false, false, true, "", "", false, false);
+                MayAbility *ma1 = NEW MayAbility(game, game->mLayers->actionLayer()->getMaxId(), ac->clone(), target, true);
+                MTGAbility *ga1 = NEW GenericAddToGame(game, game->mLayers->actionLayer()->getMaxId(), target, NULL, ma1->clone());
+                SAFE_DELETE(ac);
+                SAFE_DELETE(ma1);
+                ga1->resolve();
+                SAFE_DELETE(ga1);
             }
             return mCount;
         }

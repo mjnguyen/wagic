@@ -11,8 +11,12 @@
 #endif
 #include "WFont.h"
 
+#include <typeinfo>
+
+#ifdef FORCE_LOW_CACHE_MEMORY
 //#define FORCE_LOW_CACHE_MEMORY
 const unsigned int kConstrainedCacheLimit = 8 * 1024 * 1024;
+#endif
 
 extern bool neofont;
 int idCounter = OTHERS_OFFSET;
@@ -33,18 +37,18 @@ WResourceManager* WResourceManager::sInstance = NULL;
 
 WResourceManager* WResourceManager::Instance()
 {
-	if (sInstance == NULL)
-	{
-		sInstance = NEW ResourceManagerImpl;
-	}
+    if (sInstance == NULL)
+    {
+        sInstance = NEW ResourceManagerImpl;
+    }
 
-	return sInstance;
+    return sInstance;
 }
 
 void WResourceManager::Terminate()
 {
-	if (sInstance)
-		SAFE_DELETE(sInstance);
+    if (sInstance)
+        SAFE_DELETE(sInstance);
 }
 
 
@@ -230,10 +234,14 @@ JQuadPtr ResourceManagerImpl::RetrieveCard(MTGCard * card, int style, int submod
 
     submode = submode | TEXTURE_SUB_CARD;
 
-    static std::ostringstream filename;
-    filename.str("");
-    filename << setlist[card->setId] << "/" << card->getImageName();
-
+    //static std::ostringstream filename;
+    //filename.str("");
+    string filename;
+    filename.reserve(4096);
+    //filename << setlist[card->setId] << "/" << card->getImageName();
+    filename.append(setlist[card->setId]);
+    filename.append("/");
+    filename.append(card->getImageName());
     int id = card->getMTGId();
 
     //Aliases.
@@ -243,7 +251,7 @@ JQuadPtr ResourceManagerImpl::RetrieveCard(MTGCard * card, int style, int submod
         style = RETRIEVE_NORMAL;
     }
 
-    JQuadPtr jq = RetrieveQuad(filename.str(), 0, 0, 0, 0, "", style, submode | TEXTURE_SUB_5551, id);
+    JQuadPtr jq = RetrieveQuad(filename, 0, 0, 0, 0, "", style, submode | TEXTURE_SUB_5551, id);
 
     lastError = textureWCache.mError;
     if (jq)
@@ -838,12 +846,13 @@ void ResourceManagerImpl::InitFonts(const std::string& inLang)
     LoadWFont("pspsimon", 11, Fonts::MAIN_FONT + idOffset);
     GetWFont(Fonts::MAIN_FONT)->SetTracking(-1);
     LoadWFont("pspf3", 16, Fonts::MENU_FONT + idOffset);
+    LoadWFont("pspmagic", 16, Fonts::MAGIC_FONT + idOffset);
 #else
     LoadWFont("simon", 11, Fonts::MAIN_FONT + idOffset);
     GetWFont(Fonts::MAIN_FONT)->SetTracking(-1);
     LoadWFont("f3", 16, Fonts::MENU_FONT + idOffset);
-#endif
     LoadWFont("magic", 16, Fonts::MAGIC_FONT + idOffset);
+#endif
     LoadWFont("smallface", 7, Fonts::SMALLFACE_FONT + idOffset);
 }
 
@@ -1036,12 +1045,12 @@ cacheItem* WCache<cacheItem, cacheActual>::AttemptNew(const string& filename, in
             SAFE_DELETE(item);
             return NULL;
         }
-		else
+        else
         {
             DebugTrace("AttemptNew failed to load (not a 404 error). Deleting cache item " << ToHex(item));
             SAFE_DELETE(item);
             mError = CACHE_ERROR_BAD;
-        	return NULL;
+            return NULL;
         }
     }
 

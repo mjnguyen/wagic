@@ -31,6 +31,7 @@ protected:
     ManaCost * manaUsedToCast;
     ManaCost * morph;
     ManaCost * Retrace;
+    ManaCost * Bestow;
     ManaCost * FlashBack;
     ManaCost * BuyBack;
     ManaCost * kicker;
@@ -47,33 +48,39 @@ public:
         MANA_PAID_WITH_FLASHBACK = 5,
         MANA_PAID_WITH_RETRACE = 6,
         MANA_PAID_WITH_MORPH = 7,
-        MANA_PAID_WITH_SUSPEND = 8
+        MANA_PAID_WITH_SUSPEND = 8,
+        MANA_PAID_WITH_OVERLOAD = 9,
+        MANA_PAID_WITH_BESTOW = 10,
+        MANA_PAID_WITH_OTHERCOST = 11
     };
     ExtraCosts * extraCosts;
 
-	ManaCost * getAlternative(){ return alternative; };
-	void setAlternative(ManaCost * aMana){ SAFE_DELETE(alternative); alternative = aMana;};
+    ManaCost * getAlternative(){ return alternative; };
+    void setAlternative(ManaCost * aMana){ SAFE_DELETE(alternative); alternative = aMana;};
 
-	ManaCost * getKicker(){ return kicker; };
-	void setKicker(ManaCost * aMana){ SAFE_DELETE(kicker); kicker = aMana;};
+    ManaCost * getKicker(){ return kicker; };
+    void setKicker(ManaCost * aMana){ SAFE_DELETE(kicker); kicker = aMana;};
 
-	ManaCost * getBuyback(){ return BuyBack; };
-	void setBuyback(ManaCost * aMana){ SAFE_DELETE(BuyBack); BuyBack = aMana;};
+    ManaCost * getBuyback(){ return BuyBack; };
+    void setBuyback(ManaCost * aMana){ SAFE_DELETE(BuyBack); BuyBack = aMana;};
 
-	ManaCost * getFlashback(){ return FlashBack; };
-	void setFlashback(ManaCost * aMana){ SAFE_DELETE(FlashBack); FlashBack = aMana;};
+    ManaCost * getFlashback(){ return FlashBack; };
+    void setFlashback(ManaCost * aMana){ SAFE_DELETE(FlashBack); FlashBack = aMana;};
 
-	ManaCost * getRetrace(){ return Retrace; };
-	void setRetrace(ManaCost * aMana){ SAFE_DELETE(Retrace); Retrace = aMana;};
+    ManaCost * getRetrace(){ return Retrace; };
+    void setRetrace(ManaCost * aMana){ SAFE_DELETE(Retrace); Retrace = aMana;};
 
-	ManaCost * getMorph(){ return morph; };
-	void setMorph(ManaCost * aMana){ SAFE_DELETE(morph); morph = aMana;};
+    ManaCost * getMorph(){ return morph; };
+    void setMorph(ManaCost * aMana){ SAFE_DELETE(morph); morph = aMana;};
 
-	ManaCost * getSuspend(){ return suspend; };
-	void setSuspend(ManaCost * aMana){ SAFE_DELETE(suspend); suspend = aMana;};
+    ManaCost * getSuspend(){ return suspend; };
+    void setSuspend(ManaCost * aMana){ SAFE_DELETE(suspend); suspend = aMana;};
 
-	ManaCost * getManaUsedToCast(){ return manaUsedToCast; };
-	void setManaUsedToCast(ManaCost * aMana){ SAFE_DELETE(manaUsedToCast); manaUsedToCast = aMana;};
+    ManaCost * getBestow() { return Bestow; };
+    void setBestow(ManaCost * aMana) { SAFE_DELETE(Bestow); Bestow = aMana; };
+
+    ManaCost * getManaUsedToCast(){ return manaUsedToCast; };
+    void setManaUsedToCast(ManaCost * aMana){ SAFE_DELETE(manaUsedToCast); manaUsedToCast = aMana;};
 
     string alternativeName;
     bool isMulti;
@@ -94,11 +101,15 @@ public:
     ManaCost(const ManaCost& manaCost);
     ManaCost& operator= (const ManaCost& manaCost);
     void copy(ManaCost * _manaCost);
+    void changeCostTo(ManaCost * _manaCost);
     int isNull();
     int getConvertedCost();
     string toString();
     int getCost(int color);
     int getManaSymbols(int color);
+    int getManaSymbolsHybridMerged(int color);
+    int countHybridsNoPhyrexian();
+    void removeHybrid(ManaCost * _cost);
 
     //Returns NULL if i is greater than nbhybrids
     ManaCostHybrid * getHybridCost(unsigned int i);
@@ -145,7 +156,7 @@ public:
     ManaPool(Player * player);
     ManaPool(ManaCost * _manaCost, Player * player);
     int remove (int color, int value);
-    int add(int color, int value, MTGCardInstance * source = NULL);
+    int add(int color, int value, MTGCardInstance * source = NULL, bool extra = false);
     int add(ManaCost * _cost, MTGCardInstance * source = NULL);
     int pay (ManaCost * _cost);
 };

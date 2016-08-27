@@ -38,6 +38,117 @@ public:
     virtual MTGEventText * clone() const;
 };
 
+class MTGRevealingCards : public MTGAbility, public CardDisplay
+{
+public:
+    vector<CardView*> cards;
+    Player * playerForZone;
+    MTGGameZone * RevealZone;
+    MTGGameZone * RevealFromZone;
+    string revealCertainTypes;
+    string revealUntil;
+
+    CardDisplay * revealDisplay;
+    vector<CardDisplay*>trashDisplays;//used for repeat
+    int nbCard;
+    string abilityString;
+    string number;
+    string abilityOne;
+    string abilityTwo;
+    string afterReveal;
+    bool afterEffectActivated;
+    MTGAbility * abilityToCast;
+    MTGAbility * abilityFirst;
+    MTGAbility * abilitySecond;
+    MTGAbility * abilityAfter;
+    vector<MTGAbility*>abilities;
+    bool repeat;//only the first ability can be repeated, and it must be targeted.
+    bool initCD;
+
+    void Update(float dt);
+    int testDestroy();
+    int toResolve();
+    void CardViewBackup(MTGCardInstance * backup);
+    void Render();
+    bool CheckUserInput(JButton key);
+    MTGAbility * contructAbility(string abilityToMake = "");
+    MTGRevealingCards(GameObserver* observer, int _id, MTGCardInstance * card, string text);
+    virtual MTGRevealingCards * clone() const;
+    ~MTGRevealingCards();
+    int receiveEvent(WEvent*);
+};
+
+class RevealDisplay : public CardDisplay
+{
+public:
+    RevealDisplay(int id, GameObserver* game, int x, int y, JGuiListener * listener = NULL, TargetChooser * tc = NULL,
+        int nb_displayed_items = 7);
+    void AddCard(MTGCardInstance * _card);
+    bool CheckUserInput(JButton key);
+};
+
+class GenericRevealAbility : public ActivatedAbility
+{
+public:
+    string howMany;
+    MTGRevealingCards * ability;
+    GenericRevealAbility(GameObserver* observer, int id, MTGCardInstance * source, Targetable * target, string _howMany);
+    int resolve();
+    const string getMenuText();
+    GenericRevealAbility * clone() const;
+    ~GenericRevealAbility();
+
+};
+
+class MTGScryCards : public MTGAbility, public CardDisplay
+{
+public:
+    vector<CardView*> cards;
+    MTGGameZone * RevealZone;
+    MTGGameZone * RevealFromZone;
+
+    CardDisplay * revealDisplay;
+    vector<CardDisplay*>trashDisplays;//used for repeat
+    int nbCard;
+    bool delayed;
+    bool dontRevealAfter;
+    int revealTopAmount;
+    string delayedAbilityString;
+    string abilityString;
+    string number;
+    string abilityOne;
+    string abilityTwo;
+    MTGAbility * abilityToCast;
+    MTGAbility * abilityFirst;
+    MTGAbility * abilitySecond;
+    vector<MTGAbility*>abilities;
+    bool initCD;
+    void Update(float dt);
+    int testDestroy();
+    void initDisplay(int value = 0);
+    int toResolve();
+    void Render();
+    bool CheckUserInput(JButton key);
+    MTGAbility * contructAbility(string abilityToMake = "");
+    MTGScryCards(GameObserver* observer, int _id, MTGCardInstance * card, string text);
+    virtual MTGScryCards * clone() const;
+    ~MTGScryCards();
+    int receiveEvent(WEvent*);
+};
+
+class GenericScryAbility : public ActivatedAbility
+{
+public:
+    string howMany;
+    MTGScryCards * ability;
+    GenericScryAbility(GameObserver* observer, int id, MTGCardInstance * source, Targetable * target, string _howMany);
+    int resolve();
+    const string getMenuText();
+    GenericScryAbility * clone() const;
+    ~GenericScryAbility();
+
+};
+
 class WParsedInt
 {
 public:
@@ -55,8 +166,11 @@ private:
     {
         if(!s.size())
             return;
-        if(!card)
+        if (!card)
+        {
+            intValue = atoi(s.c_str());//if there is no card, try parsing a number.
             return;
+        }
         MTGCardInstance * target = card->target;
         if(!card->storedCard)
             card->storedCard = card->storedSourceCard;
@@ -65,9 +179,8 @@ private:
         bool halfdown = false;
         bool twice = false;
         bool thrice = false;
-        bool plusone = false;
-        bool plustwo = false;
-        bool plusthree = false;
+        bool other = false;//othertype:[subtype]
+
         if (!target) target = card;
         int multiplier = 1;
         if (s[0] == '-')
@@ -116,29 +229,83 @@ private:
             size_t tXXX = s.find("thrice");
             s.erase(tXXX,tXXX + 6);
         }
-        if(s.find("plusone") != string::npos)
+
+        if(s.find("othertype") != string::npos)
         {
-            plusone = true;
-            size_t pOne = s.find("plusone");
-            s.erase(pOne,pOne + 7);
+            other = true;
+            size_t oth = s.find("othertype");
+            s.erase(oth,oth + 5);
         }
-        if(s.find("plustwo") != string::npos)
+        if(s.find("otherpower") != string::npos)
         {
-            plustwo = true;
-            size_t pTwo = s.find("plustwo");
-            s.erase(pTwo,pTwo + 7);
+            other = true;
+            size_t otp = s.find("otherpower");
+            s.erase(otp,otp + 5);
         }
-        if(s.find("plusthree") != string::npos)
+        if(s.find("othertoughness") != string::npos)
         {
-            plusthree = true;
-            size_t pThree = s.find("plusthree");
-            s.erase(pThree,pThree + 9);
+            other = true;
+            size_t ott = s.find("othertoughness");
+            s.erase(ott,ott + 5);
         }
-        if(s == "prex")
+        if(s.find("otherconvertedcost") != string::npos)
         {
-            ManaCost * cX = card->controller()->getManaPool()->Diff(card->getManaCost());
-            intValue = cX->getCost(Constants::NB_Colors);
-            delete cX;
+            other = true;
+            size_t otc = s.find("otherconvertedcost");
+            s.erase(otc,otc + 5);
+        }
+
+        if (s.find("plusend") != string::npos || s.find("minusend") != string::npos || s.find("math") != string::npos)
+        {
+            //plus#plusend and minus#minusend splits the first part and second parts and parses the
+            //ints for each part, then either adds or subtracts those 2 variables as specified.
+            vector<string>mathFound = parseBetween(s, "math", "mathend", true);
+            if (mathFound.size())//maths allows us to get the value before applying multipliers
+            {
+                WParsedInt numPar(mathFound[1], NULL, card);
+                intValue = numPar.getValue();
+
+            }
+            else
+            {
+                vector<string>plusSplit = parseBetween(s, "", "plus", true);
+                if (plusSplit.size())
+                {
+                    WParsedInt numPar(plusSplit[1], NULL, card);
+                    intValue = numPar.getValue();
+                }
+                vector<string>plusFound = parseBetween(s, "plus", "plusend", true);
+                if (plusFound.size())
+                {
+                    WParsedInt numPar(plusFound[1], NULL, card);
+                    intValue += numPar.getValue();
+                }
+                vector<string>minusSplit = parseBetween(s, "", "minus", true);
+                if (minusSplit.size())
+                {
+                    WParsedInt numPar(minusSplit[1], NULL, card);
+                    intValue = numPar.getValue();
+                }
+                vector<string>minusFound = parseBetween(s, "minus", "minusend", true);
+                if (minusFound.size())
+                {
+                    WParsedInt numPar(minusFound[1], NULL, card);
+                    intValue -= numPar.getValue();
+                }
+            }
+        }
+        else if(s == "prex")
+        {
+            if (card->setX > -1)
+            {
+                intValue = card->setX;
+            }
+            else
+            {
+                ManaCost * cX = card->controller()->getManaPool()->Diff(card->getManaCost());
+                intValue = cX->getCost(Constants::NB_Colors);
+                delete cX;
+            }
         }
         else if (s == "x" || s == "X")
         {
@@ -170,7 +337,54 @@ private:
         }
         else if (s == "manacost")
         {
-            intValue = target->getManaCost()->getConvertedCost();
+            if (target->currentZone == target->controller()->game->stack)//X is 0 except if it's on the stack
+                intValue = target->myconvertedcost + target->castX;
+            else
+                intValue = target->myconvertedcost;
+        }
+        else if (s == "azorius")//devotion blue white
+        {
+            intValue = countDevotionTo(card,card->controller()->inPlay(),Constants::MTG_COLOR_BLUE,Constants::MTG_COLOR_WHITE);
+        }
+        else if (s == "boros")//devotion red white
+        {
+            intValue = countDevotionTo(card,card->controller()->inPlay(),Constants::MTG_COLOR_WHITE,Constants::MTG_COLOR_RED);
+        }
+        else if (s == "dimir")//devotion blue black
+        {
+            intValue = countDevotionTo(card,card->controller()->inPlay(),Constants::MTG_COLOR_BLACK,Constants::MTG_COLOR_BLUE);
+        }
+        else if (s == "golgari")//devotion to green black
+        {
+            intValue = countDevotionTo(card,card->controller()->inPlay(),Constants::MTG_COLOR_BLACK,Constants::MTG_COLOR_GREEN);
+        }
+        else if (s == "gruul")//devotion to green red
+        {
+            intValue = countDevotionTo(card,card->controller()->inPlay(),Constants::MTG_COLOR_GREEN,Constants::MTG_COLOR_RED);
+        }
+        else if (s == "izzet")//devotion to red blue
+        {
+            intValue = countDevotionTo(card,card->controller()->inPlay(),Constants::MTG_COLOR_BLUE,Constants::MTG_COLOR_RED);
+        }
+        else if (s == "orzhov")//devotion to white black
+        {
+            intValue = countDevotionTo(card,card->controller()->inPlay(),Constants::MTG_COLOR_BLACK,Constants::MTG_COLOR_WHITE);
+        }
+        else if (s == "rakdos")//devotion to red black
+        {
+            intValue = countDevotionTo(card,card->controller()->inPlay(),Constants::MTG_COLOR_BLACK,Constants::MTG_COLOR_RED);
+        }
+        else if (s == "selesnya")//devotion to green white
+        {
+            intValue = countDevotionTo(card,card->controller()->inPlay(),Constants::MTG_COLOR_GREEN,Constants::MTG_COLOR_WHITE);
+        }
+        else if (s == "simic")//devotion to green blue
+        {
+            intValue = countDevotionTo(card,card->controller()->inPlay(),Constants::MTG_COLOR_BLUE,Constants::MTG_COLOR_GREEN);
+        }
+        else if (s == "Iroas")//devotion to red white
+        {
+            intValue = countDevotionTo(card, card->controller()->inPlay(), Constants::MTG_COLOR_RED, Constants::MTG_COLOR_WHITE);
         }
         else if (s.find("type:") != string::npos)
         {
@@ -192,11 +406,12 @@ private:
             }
             TargetChooserFactory tf(card->getObserver());
             TargetChooser * tc = tf.createTargetChooser(theType.c_str(),NULL);
+            tc->other = other;
             for (int i = 0; i < 2; i++)
             {
                 Player * p = card->getObserver()->players[i];
-                MTGGameZone * zones[] = { p->game->inPlay, p->game->graveyard, p->game->hand, p->game->library };
-                for (int k = 0; k < 4; k++)
+                MTGGameZone * zones[] = { p->game->inPlay, p->game->graveyard, p->game->hand, p->game->library, p->game->exile };
+                for (int k = 0; k < 5; k++)
                 {
                     MTGGameZone * zone = zones[k];
                     if (tc->targetsZone(zone, card))
@@ -282,12 +497,13 @@ private:
             }
             TargetChooserFactory tf(card->getObserver());
             TargetChooser * tc = tf.createTargetChooser(theType.c_str(),NULL);
+            tc->other = other;
             int check = 0;
             for (int i = 0; i < 2; i++)
             {
                 Player * p = card->getObserver()->players[i];
-                MTGGameZone * zones[] = { p->game->battlefield, p->game->graveyard, p->game->hand, p->game->library };
-                for (int k = 0; k < 4; k++)
+                MTGGameZone * zones[] = { p->game->battlefield, p->game->graveyard, p->game->hand, p->game->library, p->game->exile };
+                for (int k = 0; k < 5; k++)
                 {
                     MTGGameZone * zone = zones[k];
                     if(tc->targetsZone(zone,target))
@@ -326,14 +542,109 @@ private:
                 intValue = card->previous->previous->sunburst;
             }
         }
+        else if (s == "converge")
+        {
+            intValue = 0;
+            for (int i = Constants::MTG_COLOR_GREEN; i <= Constants::MTG_COLOR_WHITE; ++i)
+            {
+                if(card->getManaCost()->getManaUsedToCast()->hasColor(i))
+                    intValue +=1;
+            }
+        }
+        else if (s == "praidcount")
+        {
+            intValue = card->controller()->raidcount;
+        }
+        else if (s == "oraidcount")
+        {
+            intValue = card->controller()->opponent()->raidcount;
+        }
+        else if (s == "countallspell")
+        {
+            intValue = card->controller()->game->stack->seenThisTurn("*", Constants::CAST_ALL) + card->controller()->opponent()->game->stack->seenThisTurn("*", Constants::CAST_ALL);
+        }
+        else if (s == "countmycrespell")
+        {
+            intValue = card->controller()->game->stack->seenThisTurn("creature", Constants::CAST_ALL);
+        }
+        else if (s == "countmynoncrespell")
+        {
+            intValue = card->controller()->game->stack->seenThisTurn("*[-creature]", Constants::CAST_ALL);
+        }
+        else if (s == "evictg")
+        {
+            intValue = card->imprintG;
+        }
+        else if (s == "evictu")
+        {
+            intValue = card->imprintU;
+        }
+        else if (s == "evictr")
+        {
+            intValue = card->imprintR;
+        }
+        else if (s == "evictb")
+        {
+            intValue = card->imprintB;
+        }
+        else if (s == "evictw")
+        {
+            intValue = card->imprintW;
+        }
+        else if (s == "commongreen")
+        {
+            intValue = mostCommonColor(Constants::MTG_COLOR_GREEN, card);
+        }
+        else if (s == "commonblue")
+        {
+            intValue = mostCommonColor(Constants::MTG_COLOR_BLUE, card);
+        }
+        else if (s == "commonred")
+        {
+            intValue = mostCommonColor(Constants::MTG_COLOR_RED, card);
+        }
+        else if (s == "commonblack")
+        {
+            intValue = mostCommonColor(Constants::MTG_COLOR_BLACK, card);
+        }
+        else if (s == "commonwhite")
+        {
+            intValue = mostCommonColor(Constants::MTG_COLOR_WHITE, card);
+        }
         else if (s == "targetedcurses")
         {
             if(card->playerTarget)
                 intValue = card->playerTarget->curses.size();
         }
+        else if (s == "oplifetotal")
+        {
+            intValue = target->controller()->opponent()->life;
+        }
         else if (s == "lifetotal")
         {
             intValue = target->controller()->life;
+        }
+        else if (s == "startinglife")
+        {
+            intValue = target->controller()->initLife;
+        }
+        else if (s == "abundantlife")//current life is morethan or equal to starting life
+        {
+            intValue = 0;
+            if (target->controller()->life >= target->controller()->initLife)
+                intValue = 1;
+        }
+        else if (s == "plibrarycount")
+        {
+            intValue = 0;
+            if (target->controller()->game->library->nb_cards)
+                intValue = target->controller()->game->library->nb_cards;
+        }
+        else if (s == "olibrarycount")
+        {
+            intValue = 0;
+            if (target->controller()->opponent()->game->library->nb_cards)
+                intValue = target->controller()->opponent()->game->library->nb_cards;
         }
         else if (s == "highestlifetotal")
         {
@@ -371,6 +682,14 @@ private:
         {
             intValue = target->controller()->lifeLostThisTurn;
         }
+        else if (s == "oplifegain")
+        {
+            intValue = target->controller()->opponent()->lifeGainedThisTurn;
+        }
+        else if (s == "lifegain")
+        {
+            intValue = target->controller()->lifeGainedThisTurn;
+        }
         else if (s == "pdcount")
         {
             intValue = target->controller()->damageCount;
@@ -379,7 +698,15 @@ private:
         {
             intValue = target->controller()->opponent()->damageCount;
         }
-        else if (s == "playerpoisoncount")
+        else if (s == "pdnoncount")
+        {
+            intValue = target->controller()->nonCombatDamage;
+        }
+        else if (s == "odnoncount")
+        {
+            intValue = target->controller()->opponent()->nonCombatDamage;
+        }
+        else if (s == "mypoisoncount")
         {
             intValue = target->controller()->poisonCount;
         }
@@ -399,13 +726,33 @@ private:
         {
             intValue = target->controller()->opponent()->drawCounter;
         }
+        else if (s == "epicactivated")
+        {
+            intValue = target->controller()->epic;
+        }
+        else if (s == "snowcount")
+        {//this is just to count the number of snow mana produced ... just for debugging purposes...
+            intValue = target->controller()->snowManaG + target->controller()->snowManaU +target->controller()->snowManaR + target->controller()->snowManaB + target->controller()->snowManaW + target->controller()->snowManaC;
+        }
+        else if (s == "mypoolcount")
+        {//manapool
+            intValue = target->controller()->getManaPool()->getConvertedCost();
+        }
+        else if (s == "opponentpoolcount")
+        {//manapool opponent
+            intValue = target->controller()->opponent()->getManaPool()->getConvertedCost();
+        }
         else if (s == "p" || s == "power")
         {
-            intValue = target->getPower();
+            intValue = target->getCurrentPower();
         }
         else if (s == "t" || s == "toughness")
         {
-            intValue = target->getToughness();
+            intValue = target->getCurrentToughness();
+        }
+        else if (s == "countedamount")
+        {
+            intValue = target->CountedObjects;
         }
         else if (s == "kicked")
         {
@@ -414,6 +761,68 @@ private:
         else if (s == "handsize")
         {
             intValue = target->controller()->handsize;
+        }
+        else if (s == "olandg")
+        {
+            intValue = countManaProducedby(Constants::MTG_COLOR_GREEN, target->controller()->opponent());
+        }
+        else if (s == "olandu")
+        {
+            intValue = countManaProducedby(Constants::MTG_COLOR_BLUE, target->controller()->opponent());
+        }
+        else if (s == "olandr")
+        {
+            intValue = countManaProducedby(Constants::MTG_COLOR_RED, target->controller()->opponent());
+        }
+        else if (s == "olandb")
+        {
+            intValue = countManaProducedby(Constants::MTG_COLOR_BLACK, target->controller()->opponent());
+        }
+        else if (s == "olandw")
+        {
+            intValue = countManaProducedby(Constants::MTG_COLOR_WHITE, target->controller()->opponent());
+        }
+        else if (s == "olandc")
+        {
+            intValue = countManaProducedby(Constants::MTG_COLOR_ARTIFACT, target->controller()->opponent()) +
+                countManaProducedby(Constants::MTG_COLOR_WASTE, target->controller()->opponent());
+        }
+        else if (s == "plandg")
+        {
+            intValue = countManaProducedby(Constants::MTG_COLOR_GREEN, target->controller());
+        }
+        else if (s == "plandu")
+        {
+            intValue = countManaProducedby(Constants::MTG_COLOR_BLUE, target->controller());
+        }
+        else if (s == "plandr")
+        {
+            intValue = countManaProducedby(Constants::MTG_COLOR_RED, target->controller());
+        }
+        else if (s == "plandb")
+        {
+            intValue = countManaProducedby(Constants::MTG_COLOR_BLACK, target->controller());
+        }
+        else if (s == "plandw")
+        {
+            intValue = countManaProducedby(Constants::MTG_COLOR_WHITE, target->controller());
+        }
+        else if (s == "plandc")
+        {
+            intValue = countManaProducedby(Constants::MTG_COLOR_ARTIFACT, target->controller()) +
+                countManaProducedby(Constants::MTG_COLOR_WASTE, target->controller());
+        }
+        else if (s == "cantargetmycre")// can target my creature
+        {
+            intValue = countCanTargetby("creature", card, card->controller());
+        }
+        else if (s == "cantargetoppocre")// can target opponent creature
+        {
+            intValue = countCanTargetby("creature", card, card->controller()->opponent());
+        }
+        else if (s == "cantargetcre")// can target any creature
+        {
+            intValue = countCanTargetby("creature", card, card->controller()) + countCanTargetby("creature", card, card->controller()->opponent());
         }
         else if (s == "controllerturn")//intvalue = 1 if its your turn this(variable{controllerturn})
         {
@@ -435,43 +844,291 @@ private:
         {
             intValue = target->controller()->opponent()->game->hand->nb_cards;
         }
-        else
+        else if (s == "urzatron")//Urza lands
+        {
+            if(card->controller()->game->battlefield->hasAlias(4192) && card->controller()->game->battlefield->hasAlias(4193) && card->controller()->game->battlefield->hasAlias(4194))
+                intValue = 1;
+            else
+                intValue = 0;
+        }
+        else if (s == "worshipped")//Worship
+        {
+            if(card->controller()->game->battlefield->hasType("creature"))
+                intValue = card->controller()->life;
+            else
+                intValue = 0;
+        }
+        else if (s == "pancientooze")//Ancient Ooze
+        {
+            intValue = 0;
+            for (int j = card->controller()->game->inPlay->nb_cards - 1; j >= 0; --j)
+                if (card->controller()->game->inPlay->cards[j]->hasType(Subtypes::TYPE_CREATURE) && card->controller()->game->inPlay->cards[j] != card)
+                    intValue += card->controller()->game->inPlay->cards[j]->getManaCost()->getConvertedCost();
+        }
+        else if (s == "pdauntless")//Dauntless Dourbark
+        {
+            MTGGameZone * checkZone = card->controller()->inPlay();
+            intValue =
+                countCardTypeinZone("forest",checkZone) +
+                countCardTypeinZone("treefolk",checkZone);
+        }
+        else if (s == "pbasiclandtypes")//Basic Land types
+        {
+            MTGGameZone * checkZone = card->controller()->inPlay();
+            intValue = //mtg rules 205.4c
+                cardHasTypeinZone("waste", checkZone) +
+                cardHasTypeinZone("forest", checkZone) +
+                cardHasTypeinZone("plains", checkZone) +
+                cardHasTypeinZone("swamp", checkZone) +
+                cardHasTypeinZone("island", checkZone) +
+                cardHasTypeinZone("mountain", checkZone) +
+                cardHasTypeinZone("snow-covered forest", checkZone) +
+                cardHasTypeinZone("snow-covered plains", checkZone) +
+                cardHasTypeinZone("snow-covered swamp", checkZone) +
+                cardHasTypeinZone("snow-covered island", checkZone) +
+                cardHasTypeinZone("snow-covered mountain", checkZone);
+        }
+        else if (s == "pdomain")//player domain
+        {
+            MTGGameZone * checkZone = card->controller()->inPlay();
+            intValue = cardHasTypeinZone("forest", checkZone) +
+                cardHasTypeinZone("plains", checkZone) +
+                cardHasTypeinZone("swamp", checkZone) +
+                cardHasTypeinZone("island", checkZone) +
+                cardHasTypeinZone("mountain", checkZone);
+        }
+        else if (s == "odomain")//opponent domain
+        {
+            MTGGameZone * checkZone = card->controller()->opponent()->inPlay();
+            intValue = cardHasTypeinZone("forest", checkZone) +
+                cardHasTypeinZone("plains", checkZone) +
+                cardHasTypeinZone("swamp", checkZone) +
+                cardHasTypeinZone("island", checkZone) +
+                cardHasTypeinZone("mountain", checkZone);
+        }
+        else if (s == "myname")//Name of the card you control
+        {
+            intValue = countCardNameinZone(card->name,card->controller()->inPlay());
+        }
+        else if (s == "allmyname")//Plague Rats and others
+        {
+            intValue = 0;
+            for (int i = 0; i < 2; i++)
+                intValue += countCardNameinZone(card->name,card->getObserver()->players[i]->game->battlefield);
+        }
+        else if (s == "pgbzombie")//Soulless One
+        {
+            intValue = 0;
+            for (int i = 0; i < 2; i++)
+            {
+                intValue += countCardTypeinZone("zombie",card->getObserver()->players[i]->game->graveyard);
+                intValue += countCardTypeinZone("zombie",card->getObserver()->players[i]->game->battlefield);
+            }
+        }
+        else if (s == "pginstantsorcery")//Spellheart Chimera
+        {
+            intValue = 0;
+            for (int j = card->controller()->game->graveyard->nb_cards - 1; j >= 0; --j)
+            {
+                if (card->controller()->game->graveyard->cards[j]->hasType(Subtypes::TYPE_INSTANT)
+                    ||card->controller()->game->graveyard->cards[j]->hasType(Subtypes::TYPE_SORCERY))
+                    intValue += 1;
+            }
+        }
+        else if (s == "gravecardtypes")//Tarmogoyf
+        {
+            intValue = 0;
+            int pc = 0, tc = 0, sc = 0, lc = 0, ic = 0, ec = 0, cc = 0, ac = 0;
+            for (int j = 0; j < 2; j++)
+            {
+                MTGGameZone * checkZone = card->getObserver()->players[j]->game->graveyard;
+                if(cardHasTypeinZone("planeswalker",checkZone))
+                    pc = 1;
+                if(cardHasTypeinZone("tribal",checkZone))
+                    tc = 1;
+                if(cardHasTypeinZone("sorcery",checkZone))
+                    sc = 1;
+                if(cardHasTypeinZone("land",checkZone))
+                    lc = 1;
+                if(cardHasTypeinZone("instant",checkZone))
+                    ic = 1;
+                if(cardHasTypeinZone("enchantment",checkZone))
+                    ec = 1;
+                if(cardHasTypeinZone("creature",checkZone))
+                    cc = 1;
+                if(cardHasTypeinZone("artifact",checkZone))
+                    ac = 1;
+            }
+            intValue = pc+tc+sc+lc+ic+ec+cc+ac;
+        }
+        else if (s == "powertotalinplay")//Count Total Power of Creatures you control... Formidable
+        {
+            intValue = 0;
+            for (int j = card->controller()->game->inPlay->nb_cards - 1; j >= 0; --j)
+            {
+                if (card->controller()->game->inPlay->cards[j]->hasType(Subtypes::TYPE_CREATURE))
+                    intValue += card->controller()->game->inPlay->cards[j]->power;
+            }
+        }
+        else if (s == "revealedp")
+        {
+            if (card->revealedLast)
+                intValue = card->revealedLast->power;
+        }
+        else if (s == "revealedt")
+        {
+            if (card->revealedLast)
+                intValue = card->revealedLast->toughness;
+        }
+        else if (s == "revealedmana")
+        {
+            if (card->revealedLast)
+                intValue = card->revealedLast->getManaCost()->getConvertedCost();
+        }
+        else if(!intValue)//found nothing, try parsing a atoi
         {
             intValue = atoi(s.c_str());
         }
-        if(intValue > 0)
+        if (intValue > 0)//dont divide by 0 the rest are valid.
         {
-            if(halfup)
+            if (halfup)
             {
-                if(intValue%2 == 1)
+                if (intValue % 2 == 1)
                     intValue++;
-                intValue = intValue/2;
+                intValue = intValue / 2;
             }
-            if(halfdown)
-                intValue = intValue/2;
-            if(twice)
-                intValue = intValue*2;
-            if(thrice)
-                intValue = intValue*3;
-            if(plusone)
-                intValue = intValue+1;
-            if(plustwo)
-                intValue = intValue+2;
-            if(plusthree)
-                intValue = intValue+3;
+            if (halfdown)
+                intValue = intValue / 2;
         }
-        else
+        if (twice)
+            intValue = intValue * 2;
+        if (thrice)
+            intValue = intValue * 3;
+        if (intValue < 0)
         {
-            if(plusone)
-                intValue = intValue+1;
-            if(plustwo)
-                intValue = intValue+2;
-            if(plusthree)
-                intValue = intValue+3;
+            //we remove "-" at the start and are parsing for real values.
+            //if we ended up with a value less than 0, then we return just 0
+            intValue = 0;
         }
+
         intValue *= multiplier;
     }
 public:
+
+    int countDevotionTo(MTGCardInstance * card, MTGGameZone * zone, int color1, int color2)
+    {
+        int counthybrid = 0;
+        TargetChooserFactory dtf(card->getObserver());
+        TargetChooser * dtc = dtf.createTargetChooser("*",NULL);
+        if (dtc->targetsZone(zone, card))
+        {
+            counthybrid += zone->countDevotion(dtc, color1, color2);
+        }
+        SAFE_DELETE(dtc);
+        return counthybrid;
+    }
+
+    int countCardNameinZone(string name, MTGGameZone * zone)
+    {
+        int count = 0;
+        for( int i= 0; i < zone->nb_cards; i ++)
+            if(zone->cards[i]->name == name)
+                count += 1;
+        return count;
+    }
+
+    int countCardsInPlaybyColor(int color, GameObserver * observer)
+    {
+        int count = 0;
+        for (int i = 0; i < 2; i++)
+        {
+            for( int j= 0; j < observer->players[i]->inPlay()->nb_cards; j++)
+                if(observer->players[i]->inPlay()->cards[j]->hasColor(color))
+                    count += 1;
+        }
+        return count;
+    }
+
+    int mostCommonColor(int color, MTGCardInstance * card)
+    {
+        int maxColor = 0;
+        vector<int> colors;
+
+        for(int i = 1; i < 6; i++)
+            colors.push_back( countCardsInPlaybyColor(i, card->getObserver()) );
+        
+        for(int j = 0; j < 5; j++)
+            if ( colors[j] > maxColor )
+                maxColor = colors[j];
+
+        if (countCardsInPlaybyColor(color, card->getObserver()) >= maxColor && maxColor > 0)
+            return 1;
+
+        return 0;
+    }
+
+    int countCardTypeinZone(string type, MTGGameZone * zone)
+    {
+        int count = 0;
+        for( int i= 0; i < zone->nb_cards; i ++)
+            if(zone->cards[i]->hasType(type))
+                count += 1;
+        return count;
+    }
+
+    int cardHasTypeinZone(const char * type, MTGGameZone * zone)
+    {
+        int count = 0;
+        if(zone->hasType(type))
+            count = 1;
+        return count;
+    }
+
+    int countCanTargetby(string type, MTGCardInstance * card, Player * player)
+    {
+        int count = 0;
+            for (int j = player->game->battlefield->nb_cards - 1; j >= 0; --j)
+            {
+                if (player->game->battlefield->cards[j]->hasType(type) && !player->game->battlefield->cards[j]->protectedAgainst(card))
+                    count += 1;
+            }
+        return count;
+    }
+
+    /*int countManaProducedby(int color, MTGCardInstance * target, Player * player)
+    {
+        int count = 0;
+        for (size_t i = 0; i < target->getObserver()->mLayers->actionLayer()->manaObjects.size(); i++)
+            {
+                if (dynamic_cast<AManaProducer*> (((MTGAbility *) target->getObserver()->mLayers->actionLayer()->manaObjects[i])) && 
+                    (dynamic_cast<AManaProducer*> (((MTGAbility *) target->getObserver()->mLayers->actionLayer()->manaObjects[i])))->source->isLand() && 
+                    (dynamic_cast<AManaProducer*> (((MTGAbility *) target->getObserver()->mLayers->actionLayer()->manaObjects[i])))->source->controller() == player && 
+                    (dynamic_cast<AManaProducer*> (((MTGAbility *) target->getObserver()->mLayers->actionLayer()->manaObjects[i])))->output->hasColor(color))
+                    count += 1;
+            }
+        return count;
+    }*/
+
+    int countManaProducedby(int color, Player * player)
+    {
+        int count = 0;
+        for (int i = 0; i < player->game->battlefield->nb_cards; i++)
+        {
+            if(((MTGCardInstance *)player->game->battlefield->cards[i])->isLand() && ((MTGCardInstance *)player->game->battlefield->cards[i])->canproduceC && (color == Constants::MTG_COLOR_ARTIFACT || color == Constants::MTG_COLOR_WASTE))
+                count += 1;
+            if(((MTGCardInstance *)player->game->battlefield->cards[i])->isLand() && ((MTGCardInstance *)player->game->battlefield->cards[i])->canproduceG && color == Constants::MTG_COLOR_GREEN)
+                count += 1;
+            if(((MTGCardInstance *)player->game->battlefield->cards[i])->isLand() && ((MTGCardInstance *)player->game->battlefield->cards[i])->canproduceU && color == Constants::MTG_COLOR_BLUE)
+                count += 1;
+            if(((MTGCardInstance *)player->game->battlefield->cards[i])->isLand() && ((MTGCardInstance *)player->game->battlefield->cards[i])->canproduceR && color == Constants::MTG_COLOR_RED)
+                count += 1;
+            if(((MTGCardInstance *)player->game->battlefield->cards[i])->isLand() && ((MTGCardInstance *)player->game->battlefield->cards[i])->canproduceB && color == Constants::MTG_COLOR_BLACK)
+                count += 1;
+            if(((MTGCardInstance *)player->game->battlefield->cards[i])->isLand() && ((MTGCardInstance *)player->game->battlefield->cards[i])->canproduceW && color == Constants::MTG_COLOR_WHITE)
+                count += 1;
+        }
+        return count;
+    }
 
     WParsedInt(int value = 0)
     {
@@ -491,6 +1148,13 @@ public:
     int getValue()
     {
         return intValue;
+    }
+
+    string getStringValue()
+    {
+        stringstream sval;
+        sval << intValue;
+        return sval.str();
     }
 };
 
@@ -541,10 +1205,13 @@ public:
     TargetChooser * toTcCard, *fromTcCard;
     bool sourceUntapped;
     bool isSuspended;
+    bool limitOnceATurn;
+    int triggeredTurn;
     TrCardAddedToZone(GameObserver* observer, int id, MTGCardInstance * source, TargetZoneChooser * toTcZone, TargetChooser * toTcCard,
-            TargetZoneChooser * fromTcZone = NULL, TargetChooser * fromTcCard = NULL,bool once = false,bool sourceUntapped = false,bool isSuspended = false) :
-        Trigger(observer, id, source, once), toTcZone(toTcZone), fromTcZone(fromTcZone), toTcCard(toTcCard), fromTcCard(fromTcCard),sourceUntapped(sourceUntapped),isSuspended(isSuspended)
+            TargetZoneChooser * fromTcZone = NULL, TargetChooser * fromTcCard = NULL,bool once = false,bool sourceUntapped = false,bool isSuspended = false, bool limitOnceATurn = false) :
+        Trigger(observer, id, source, once), toTcZone(toTcZone), fromTcZone(fromTcZone), toTcCard(toTcCard), fromTcCard(fromTcCard),sourceUntapped(sourceUntapped),isSuspended(isSuspended),limitOnceATurn(limitOnceATurn)
     {
+        triggeredTurn = -1;
     };
 
 
@@ -553,6 +1220,8 @@ public:
         WEventZoneChange * e = dynamic_cast<WEventZoneChange*> (event);
         if (!e) return 0;
         if(sourceUntapped && source->isTapped() == 1)
+            return 0;
+        if (limitOnceATurn && triggeredTurn == game->turn)
             return 0;
         if(isSuspended && !source->suspended)
             return 0;
@@ -568,7 +1237,7 @@ public:
         {
             return 0;
         }
-
+        triggeredTurn = game->turn;
         return 1;
     }
 
@@ -599,6 +1268,8 @@ public:
     {
         WEventCardTap * e = dynamic_cast<WEventCardTap *> (event);
         if (!e) return 0;
+        if (e->noTrigger)
+            return 0;
         if (e->before == e->after) return 0;
         if (e->after != tap) return 0;
         if (!tc->canTarget(e->card)) return 0;
@@ -633,6 +1304,28 @@ public:
     TrCardTappedformana * clone() const
     {
         return NEW TrCardTappedformana(*this);
+    }
+};
+
+class TrCardTransformed: public Trigger
+{
+public:
+    TrCardTransformed(GameObserver* observer, int id, MTGCardInstance * source, TargetChooser * tc, bool once = false) :
+        Trigger(observer, id, source, once, tc)
+    {
+    }
+
+    int triggerOnEventImpl(WEvent * event)
+    {
+        WEventCardTransforms * e = dynamic_cast<WEventCardTransforms *> (event);
+        if (!e) return 0;
+        if (!tc->canTarget(e->card)) return 0;
+        return 1;
+    }
+
+    TrCardTransformed * clone() const
+    {
+        return NEW TrCardTransformed(*this);
     }
 };
 
@@ -758,9 +1451,9 @@ public:
 class TrcardDrawn: public Trigger
 {
 public:
-
-    TrcardDrawn(GameObserver* observer, int id, MTGCardInstance * source, TargetChooser * tc,bool once = false) :
-        Trigger(observer, id, source,once, tc)
+    bool thiscontroller, thisopponent;
+    TrcardDrawn(GameObserver* observer, int id, MTGCardInstance * source, TargetChooser * tc,bool once = false, bool thiscontroller = false, bool thisopponent = false) :
+        Trigger(observer, id, source,once, tc),thiscontroller(thiscontroller),thisopponent(thisopponent)
     {
     }
 
@@ -769,7 +1462,12 @@ public:
         WEventcardDraw * e = dynamic_cast<WEventcardDraw *> (event);
         if (!e) return 0;
         if (!tc->canTarget(e->player)) return 0;
-
+        if(thiscontroller)
+            if(e->player != source->controller())
+                return 0;
+        if(thisopponent)
+            if(e->player == source->controller())
+                return 0;
         return 1;
     }
 
@@ -794,7 +1492,7 @@ public:
         MTGCardInstance * check = e->cardAfter;
         MTGGameZone * oldZone = e->cardAfter->currentZone;
         check->currentZone = check->previousZone;
-        if (check->next && check->next->currentZone)
+        if (check->next && (check->next->currentZone|| check->isToken))
         {
             check = e->cardAfter->next;
             oldZone = e->cardAfter->next->currentZone;
@@ -857,8 +1555,10 @@ public:
     bool sourceUntapped;
     bool limitOnceATurn;
     int triggeredTurn;
-    TrDamaged(GameObserver* observer, int id, MTGCardInstance * source, TargetChooser * tc, TargetChooser * fromTc = NULL, int type = 0,bool sourceUntapped = false,bool limitOnceATurn = false,bool once = false) :
-        Trigger(observer, id, source, once, tc), fromTc(fromTc), type(type) , sourceUntapped(sourceUntapped),limitOnceATurn(limitOnceATurn)
+    bool thiscontroller;
+    bool thisopponent;
+    TrDamaged(GameObserver* observer, int id, MTGCardInstance * source, TargetChooser * tc, TargetChooser * fromTc = NULL, int type = 0,bool sourceUntapped = false,bool limitOnceATurn = false,bool once = false, bool thiscontroller = false, bool thisopponent = false) :
+        Trigger(observer, id, source, once, tc), fromTc(fromTc), type(type) , sourceUntapped(sourceUntapped),limitOnceATurn(limitOnceATurn),thiscontroller(thiscontroller),thisopponent(thisopponent)
     {
         triggeredTurn = -1;
     }
@@ -875,6 +1575,15 @@ public:
         if (fromTc && !fromTc->canTarget(e->damage->source)) return 0;
         if (type == 1 && e->damage->typeOfDamage != Damage::DAMAGE_COMBAT) return 0;
         if (type == 2 && e->damage->typeOfDamage == Damage::DAMAGE_COMBAT) return 0;
+        if (e->damage->target->type_as_damageable == Damageable::DAMAGEABLE_PLAYER)
+        {
+            if(thiscontroller)
+                if(e->damage->target != (Damageable *)source->controller())
+                    return 0;
+            if(thisopponent)
+                if(e->damage->target == (Damageable *)source->controller())
+                    return 0;
+        }
         e->damage->target->thatmuch = e->damage->damage;
         e->damage->source->thatmuch = e->damage->damage;
         this->source->thatmuch = e->damage->damage;
@@ -899,9 +1608,9 @@ class TrLifeGained: public Trigger
 public:
     TargetChooser * fromTc;
     int type;//this allows damagenoncombat and combatdamage to share this trigger
-    bool sourceUntapped;
-    TrLifeGained(GameObserver* observer, int id, MTGCardInstance * source, TargetChooser * tc, TargetChooser * fromTc = NULL, int type = 0,bool sourceUntapped = false,bool once = false) :
-        Trigger(observer, id, source, once , tc),  fromTc(fromTc), type(type) , sourceUntapped(sourceUntapped)
+    bool sourceUntapped, thiscontroller, thisopponent;
+    TrLifeGained(GameObserver* observer, int id, MTGCardInstance * source, TargetChooser * tc, TargetChooser * fromTc = NULL, int type = 0,bool sourceUntapped = false,bool once = false, bool thiscontroller = false, bool thisopponent = false) :
+        Trigger(observer, id, source, once , tc),  fromTc(fromTc), type(type) , sourceUntapped(sourceUntapped) , thiscontroller(thiscontroller) , thisopponent(thisopponent)
     {
     }
 
@@ -915,6 +1624,12 @@ public:
         if (fromTc && !fromTc->canTarget(e->player)) return 0;
         if (type == 1 && (e->amount > 0)) return 0;
         if (type == 0 && (e->amount < 0)) return 0;
+        if(thiscontroller)
+            if(e->player != source->controller())
+                return 0;
+        if(thisopponent)
+            if(e->player == source->controller())
+                return 0;
         e->player->thatmuch = abs(e->amount);
         this->source->thatmuch = abs(e->amount);
 
@@ -1002,7 +1717,7 @@ public:
     }
 };
 
-//targetted trigger
+//counter trigger
 class TrCounter: public Trigger
 {
 public:
@@ -1122,6 +1837,17 @@ public:
     int resolve();
     const string getMenuText();
     AAFakeAbility * clone() const;
+};
+
+class AAEPIC: public ActivatedAbility
+{
+public:
+    string named;
+    bool FField;
+    AAEPIC(GameObserver* observer, int id, MTGCardInstance * source, MTGCardInstance * target,string _newName, ManaCost * cost = NULL, bool ffield = false );
+    int resolve();
+    const string getMenuText();
+    AAEPIC * clone() const;
 };
 
 class AAFizzler: public ActivatedAbility
@@ -1283,12 +2009,14 @@ public:
 class AACopier: public ActivatedAbility
 {
 public:
+    vector<MTGAbility *> currentAbilities;
+    MTGAbility * andAbility;
     AACopier(GameObserver* observer, int _id, MTGCardInstance * _source, MTGCardInstance * _target = NULL, ManaCost * _cost = NULL);
     int resolve();
     const string getMenuText();
     AACopier * clone() const;
 };
-//imprint
+//phaseout
 class AAPhaseOut: public ActivatedAbility
 {
 public:
@@ -1296,6 +2024,15 @@ public:
     int resolve();
     const string getMenuText();
     AAPhaseOut * clone() const;
+};
+//AAImprint
+class AAImprint: public ActivatedAbility
+{
+public:
+    AAImprint(GameObserver* observer, int _id, MTGCardInstance * _source, MTGCardInstance * _target = NULL, ManaCost * _cost = NULL);
+    int resolve();
+    const string getMenuText();
+    AAImprint * clone() const;
 };
 //cloning...this makes a token thats a copy of the target.
 class AACloner: public ActivatedAbility
@@ -1307,6 +2044,7 @@ public:
     list<int> awith;
     list<int> colors;
     list<int> typesToAdd;
+    MTGAbility * andAbility;
 
     AACloner(GameObserver* observer, int _id, MTGCardInstance * _source, MTGCardInstance * _target = NULL, ManaCost * _cost = NULL, int who = 0,
             string abilitiesStringList = "",string typeslist = "");
@@ -1324,7 +2062,9 @@ public:
     string destination;
     MTGAbility * andAbility;
     string named;
-    AAMover(GameObserver* observer, int _id, MTGCardInstance * _source, MTGCardInstance * _target, string dest,string _name, ManaCost * _cost = NULL);
+    bool undying;
+    bool persist;
+    AAMover(GameObserver* observer, int _id, MTGCardInstance * _source, MTGCardInstance * _target, string dest,string _name, ManaCost * _cost = NULL, bool undying = false, bool persist = false);
     MTGGameZone * destinationZone(Targetable * target = NULL);
     int resolve();
     const string getMenuText();
@@ -1643,6 +2383,7 @@ public:
 
             assert(value < 2);
             _target->basicAbilities.set(ability, value > 0);
+
             return InstantAbility::addToGame();
         }
 
@@ -1770,7 +2511,8 @@ public:
     {
         if (!isReactingToClick(_card)) return 0;
         game->currentlyActing()->getManaPool()->pay(cost);
-        game->currentlyActing()->life += life;
+        if(!game->currentlyActing()->inPlay()->hasAbility(Constants::CANTCHANGELIFE))
+            game->currentlyActing()->life += life;
         lastUsedOn = lastChecked;
         return 1;
     }
@@ -2010,49 +2752,110 @@ public:
     WParsedPT * wppt;
     string PT;
     bool nonstatic;
+    bool cda;
     APowerToughnessModifier(GameObserver* observer, int id, MTGCardInstance * _source, MTGCardInstance * _target, WParsedPT * wppt,string PT,bool nonstatic) :
         MTGAbility(observer, id, _source, _target), wppt(wppt),PT(PT),nonstatic(nonstatic)
     {
         aType = MTGAbility::STANDARD_PUMP;
+        cda = PT.find("cdaactive") != string::npos;
     }
     
-        void Update(float)
+    void Update(float)
+    {
+        if(!nonstatic)
+            return;
+        if(source->isToken && !source->isInPlay(game) && cda)
         {
-            if(!nonstatic)
-                return;
+            this->forceDestroy = 1;
+            return;
+        }
+        if(!cda || (cda && (((MTGCardInstance *) target)->isSettingBase < 1)))
+        {
+            if(((MTGCardInstance *) target)->isSwitchedPT)
+                ((MTGCardInstance *) target)->switchPT(false);//revert
+
             ((MTGCardInstance *) target)->power -= wppt->power.getValue();
             ((MTGCardInstance *) target)->addToToughness(-wppt->toughness.getValue());
             if(PT.size())
-            {
-                SAFE_DELETE(wppt);
-                wppt = NEW WParsedPT(PT,NULL,(MTGCardInstance *) source);
-            }
+                {
+                    SAFE_DELETE(wppt);
+                    if(cda)
+                        wppt = NEW WParsedPT(cReplaceString(PT, " cdaactive", ""),NULL,(MTGCardInstance *) source);
+                    else
+                        wppt = NEW WParsedPT(cReplaceString(PT, " nonstatic", ""),NULL,(MTGCardInstance *) source);
+                }
             MTGCardInstance * _target = (MTGCardInstance *) target;
             _target->power += wppt->power.getValue();
             _target->addToToughness(wppt->toughness.getValue());
+
+            if(_target->isSwitchedPT)
+                _target->switchPT(true);//reaapply
         }
-        
+        if(cda)
+        {//update but not apply
+            if(PT.size())
+                {
+                    SAFE_DELETE(wppt);
+                    if(cda)
+                        wppt = NEW WParsedPT(cReplaceString(PT, " cdaactive", ""),NULL,(MTGCardInstance *) source);
+                    else
+                        wppt = NEW WParsedPT(cReplaceString(PT, " nonstatic", ""),NULL,(MTGCardInstance *) source);
+                }
+            ((MTGCardInstance *) target)->origpower = wppt->power.getValue();
+            ((MTGCardInstance *) target)->origtoughness = (wppt->toughness.getValue() + ((MTGCardInstance *) target)->life)-((MTGCardInstance *) target)->life;//what?
+        }
+    }
     int addToGame()
     {
         MTGCardInstance * _target = (MTGCardInstance *) target;
         if(PT.size())
         {
             SAFE_DELETE(wppt);
-            wppt = NEW WParsedPT(PT,NULL,(MTGCardInstance *) source);
+            if(cda)
+                wppt = NEW WParsedPT(cReplaceString(PT, " cdaactive", ""),NULL,(MTGCardInstance *) source);
+            else
+                wppt = NEW WParsedPT(cReplaceString(PT, " nonstatic", ""),NULL,(MTGCardInstance *) source);
         }
-        _target->power += wppt->power.getValue();
-        _target->addToToughness(wppt->toughness.getValue());
+        if(cda)
+        {//Characteristic-defining abilities
+            if(_target->isSwitchedPT)
+            {
+                _target->switchPT(false);
+                _target->cdaPT(wppt->power.getValue(),wppt->toughness.getValue());
+                _target->switchPT(true);
+            }
+            else
+                _target->cdaPT(wppt->power.getValue(),wppt->toughness.getValue());
+
+            _target->isCDA = true;
+        }
+        else
+        {
+            if(_target->isSwitchedPT)
+            {
+                _target->switchPT(false);
+                _target->addptbonus(wppt->power.getValue(),wppt->toughness.getValue());
+                _target->switchPT(true);
+            }
+            else
+                _target->addptbonus(wppt->power.getValue(),wppt->toughness.getValue());
+        }
         if(_target->has(Constants::INDESTRUCTIBLE) && wppt->toughness.getValue() < 0 && _target->toughness <= 0)
         {
-        _target->controller()->game->putInGraveyard(_target);
+            _target->controller()->game->putInGraveyard(_target);
         }
         return MTGAbility::addToGame();
     }
-
     int destroy()
     {
-        ((MTGCardInstance *) target)->power -= wppt->power.getValue();
-        ((MTGCardInstance *) target)->addToToughness(-wppt->toughness.getValue());
+        if(cda)
+        {
+            /*??Do Nothing??*/;
+        }
+        else
+        {
+            ((MTGCardInstance *) target)->removeptbonus(wppt->power.getValue(),wppt->toughness.getValue());
+        }
         return 1;
     }
     const string getMenuText()
@@ -2060,7 +2863,10 @@ public:
         if(PT.size())
         {
             SAFE_DELETE(wppt);
-            wppt = NEW WParsedPT(PT,NULL,(MTGCardInstance *) source);
+            if(cda)
+                wppt = NEW WParsedPT(cReplaceString(PT, " cdaactive", ""),NULL,(MTGCardInstance *) source);
+            else
+                wppt = NEW WParsedPT(cReplaceString(PT, " nonstatic", ""),NULL,(MTGCardInstance *) source);
         }
         sprintf(menuText, "%i/%i", wppt->power.getValue(), wppt->toughness.getValue());
         return menuText;
@@ -2071,12 +2877,10 @@ public:
         a->wppt = NEW WParsedPT(*(a->wppt));
         return a;
     }
-
     ~APowerToughnessModifier()
     {
         delete (wppt);
     }
-
 };
 
 class GenericInstantAbility: public InstantAbility, public NestedAbility
@@ -2321,7 +3125,7 @@ public:
     {
         if (newPhase != currentPhase && newPhase == phase && game->currentPlayer == ((MTGCardInstance *) target)->controller())
         {
-            if (!onlyIfTargetTapped || ((MTGCardInstance *) target)->isTapped())
+            if ((!onlyIfTargetTapped || ((MTGCardInstance *) target)->isTapped()) && (!game->currentPlayer->inPlay()->hasAbility(Constants::CANTCHANGELIFE)))
             {
                 if (life > 0)
                 {
@@ -2345,7 +3149,6 @@ public:
         return NEW ARegularLifeModifierAura(*this);
     }
 };
-
 //Generic Kird Ape
 class AAsLongAs: public ListMaintainerAbility, public NestedAbility
 {
@@ -2383,8 +3186,8 @@ public:
         for (int i = 0; i < 2; i++)
         {
             Player * p = game->players[i];
-            MTGGameZone * zones[] = { p->game->inPlay, p->game->graveyard, p->game->hand, p->game->library };
-            for (int k = 0; k < 4; k++)
+            MTGGameZone * zones[] = { p->game->inPlay, p->game->graveyard, p->game->hand, p->game->library, p->game->exile };
+            for (int k = 0; k < 5; k++)
             {
                 MTGGameZone * zone = zones[k];
                 Value = zone->countByCanTarget(tc);
@@ -2589,6 +3392,7 @@ public:
             }
             else
             {
+                a->forcedAlive = 1;
                 a->addToGame();
                 abilities[d] = a;
             }
@@ -2611,6 +3415,7 @@ public:
         if (abilities.find(card) != abilities.end()
             && !(forceDestroy == -1 && forcedAlive == 1)) //only embelms have forcedestroy = -1 and forcedalive = 1
         { 
+            abilities[card]->forcedAlive = 0;
             game->removeObserver(abilities[card]);
             abilities.erase(card);
         }
@@ -2824,6 +3629,7 @@ public:
     list<int> colors;
     int power, toughness;
     int tokenId;
+    string _cardName;
     string name;
     string sabilities;
     string starfound;
@@ -2834,7 +3640,10 @@ public:
     bool battleReady;
     MTGCardInstance * myToken;
     vector<MTGAbility *> currentAbilities;
+    MTGAbility * andAbility;
     Player * tokenReciever;
+    string cID;
+    //by id
     ATokenCreator(GameObserver* observer, int _id, MTGCardInstance * _source, Targetable *, ManaCost * _cost, int tokenId,string starfound, WParsedInt * multiplier = NULL,
         int who = 0,bool aLivingWeapon = false) :
     ActivatedAbility(observer, _id, _source, _cost, 0), tokenId(tokenId), starfound(starfound),multiplier(multiplier), who(who),aLivingWeapon(aLivingWeapon)
@@ -2843,10 +3652,25 @@ public:
         MTGCard * card = MTGCollection()->getCardById(tokenId);
         if (card) name = card->data->getName();
         battleReady = false;
+        andAbility = NULL;
+        cID = "";
     }
-
+    //by name, card still require valid card.dat info, this just makes the primitive code far more readable. token(Eldrazi scion) instead of token(-1234234)...
+    ATokenCreator(GameObserver* observer, int _id, MTGCardInstance * _source, Targetable *, ManaCost * _cost, string cardName, string starfound, WParsedInt * multiplier = NULL,
+        int who = 0, bool aLivingWeapon = false) :
+        ActivatedAbility(observer, _id, _source, _cost, 0), _cardName(cardName), starfound(starfound), multiplier(multiplier), who(who), aLivingWeapon(aLivingWeapon)
+    {
+        if (!multiplier) this->multiplier = NEW WParsedInt(1);
+        MTGCard * card = MTGCollection()->getCardByName(_cardName);
+        tokenId = card->getId();
+        if (card) name = card->data->getName();
+        battleReady = false;
+        andAbility = NULL;
+        cID = "";
+    }
+    //by construction
     ATokenCreator(GameObserver* observer, int _id, MTGCardInstance * _source, Targetable *, ManaCost * _cost, string sname, string stypes, int _power, int _toughness,
-        string sabilities, string starfound,WParsedInt * multiplier = NULL, int _who = 0,bool aLivingWeapon = false,string spt = "") :
+        string sabilities, string starfound,WParsedInt * multiplier = NULL, int _who = 0,bool aLivingWeapon = false,string spt = "", string tnum = "") :
     ActivatedAbility(observer, _id, _source, _cost, 0),sabilities(sabilities),starfound(starfound), multiplier(multiplier), who(_who),aLivingWeapon(aLivingWeapon),spt(spt)
     {
         power = _power;
@@ -2855,6 +3679,8 @@ public:
         tokenId = 0;
         aType = MTGAbility::STANDARD_TOKENCREATOR;
         battleReady = false;
+        andAbility = NULL;
+        cID = tnum;
         if (!multiplier) this->multiplier = NEW WParsedInt(1);
         //TODO this is a copy/past of other code that's all around the place, everything should be in a dedicated parser class;
 
@@ -2929,7 +3755,7 @@ public:
             SAFE_DELETE(NewPow);
             SAFE_DELETE(NewTou);
         }
-        for (int i = 0; i < multiplier->getValue(); ++i)
+        for (int i = 0; i < Tokenizer(); ++i)
         {
             //MTGCardInstance * myToken;
             if (tokenId)
@@ -2941,6 +3767,16 @@ public:
             else
             {
                 myToken = NEW Token(name, source, power, toughness);
+                if(!cID.empty())
+                {
+                    string customId = "";
+                    ostringstream tokID;
+                    tokID << abs(myToken->getId());
+                    customId.append(""+tokID.str()+cID);
+                    customId = cReplaceString(customId," ","");
+                    WParsedInt newID(customId, NULL, source);
+                    myToken->setMTGId(-newID.getValue());
+                }
                 list<int>::iterator it;
                 for (it = types.begin(); it != types.end(); it++)
                 {
@@ -2975,6 +3811,15 @@ public:
             spell->source->owner = tokenReciever;
             spell->source->isToken = 1;
             spell->source->fresh = 1;
+            spell->source->entersBattlefield = 1;
+            if(spell->source->getMTGId() == 0)
+            {//fix missing art: if token creator is put inside ability$!!$ who, then try to get the stored source card
+                if(((MTGCardInstance*)source)->storedSourceCard)
+                {
+                    spell->source->setId = ((MTGCardInstance*)source)->storedSourceCard->setId;
+                    spell->source->setMTGId(-((MTGCardInstance*)source)->storedSourceCard->getMTGId());
+                }
+            }
             if(aLivingWeapon)
             {
                 livingWeaponToken(spell->source);
@@ -2983,11 +3828,45 @@ public:
             {
                 battleReadyToken(spell->source);
             }
+            //andability
+            if(andAbility)
+            {
+                //backup andAbility for copier and cloner
+                spell->source->TokenAndAbility = andAbility->clone();
+                MTGAbility * andAbilityClone = andAbility->clone();
+                andAbilityClone->target = spell->source;
+                if(andAbility->oneShot)
+                {
+                    andAbilityClone->resolve();
+                    SAFE_DELETE(andAbilityClone);
+                }
+                else
+                {
+                    andAbilityClone->addToGame();
+                }
+            }
             delete spell;
         }
         return 1;
     }
 
+    int Tokenizer()//tokenizer
+    {
+        int tokenize = 1;
+        if (source->controller()->game->battlefield->hasAbility(Constants::TOKENIZER))
+        {
+            int nbcards = source->controller()->game->battlefield->nb_cards;
+            for (int j = 0; j < nbcards; j++)
+            {
+                if (source->controller()->game->battlefield->cards[j]->has(Constants::TOKENIZER))
+                    tokenize *= 2;
+            }
+            return multiplier->getValue()*tokenize;
+        }
+        else
+            return multiplier->getValue();
+    }
+   
     void setTokenOwner()
     {
         switch(who)
@@ -3350,10 +4229,12 @@ class AThis: public MTGAbility, public NestedAbility
 public:
     MTGAbility * a;
     ThisDescriptor * td;
-    AThis(GameObserver* observer, int _id, MTGCardInstance * _source, Damageable * _target, ThisDescriptor * _td, MTGAbility * ability) :
+    string restrictionCheck;
+    AThis(GameObserver* observer, int _id, MTGCardInstance * _source, Damageable * _target, ThisDescriptor * _td, MTGAbility * ability, string restriction = "") :
         MTGAbility(observer, _id, _source, _target), NestedAbility(ability)
     {
         td = _td;
+        restrictionCheck = restriction;
         ability->source = source;
         ability->target = target;
         a = NULL;
@@ -3377,9 +4258,18 @@ public:
 
     int resolve()
     {
-        //TODO check if ability is oneShot ?
-        int match;
-        match = td->match(source);
+        int match = 0;
+        if (td)
+        {
+            match = td->match(source);
+        }
+        else
+        {//restriction check instead of Targetchooser
+            AbilityFactory abf(target->getObserver());
+            int checkCond = abf.parseCastRestrictions(source, source->controller(), restrictionCheck);
+            if (checkCond)
+                match = 1;
+        }
         if (match > 0)
         {
             addAbilityToGame();
@@ -3426,6 +4316,7 @@ public:
     {
         AThis * a =  NEW AThis(*this);
         a->ability = ability->clone();
+        if(a->td)
         a->td = td->clone();
         return a;
     }
@@ -3536,6 +4427,20 @@ public:
     }
 };
 
+//Modify Hand
+class AModifyHand: public AbilityTP
+{
+public:
+    string hand;
+    AModifyHand(GameObserver* observer, int _id, MTGCardInstance * _source, Targetable * _target, string hand, int who = TargetChooser::UNSET);
+    int addToGame();
+    int destroy();
+    const string getMenuText();
+    AModifyHand * clone() const;
+    //~AModifyHand();
+
+};
+
 //set a players hand size
 class AASetHand: public ActivatedAbilityTP
 {
@@ -3625,12 +4530,23 @@ public:
         return NEW TADamager(*this);
     }
 };
+//bestow
+class ABestow : public ActivatedAbility
+{
+public:
+    MTGCardInstance * _card;
+    ABestow(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * _target, ManaCost * _cost = NULL);
+    int resolve();
+    const string getMenuText();
+    ABestow * clone() const;
+};
 
 /* Can tap a target for a cost */
 class AATapper: public ActivatedAbility
 {
 public:
-    AATapper(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * _target, ManaCost * _cost = NULL);
+    bool _sendNoEvent;
+    AATapper(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * _target, ManaCost * _cost = NULL, bool _sendNoEvent = true);
     int resolve();
     const string getMenuText();
     AATapper * clone() const;
@@ -3646,6 +4562,22 @@ public:
     AAUntapper * clone() const;
 };
 
+/*announce card X*/
+class AAWhatsX : public ActivatedAbility
+{
+public:
+    int value;
+    MTGAbility * costRule;
+    AAWhatsX(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * source, int value = 0, MTGAbility * costRule = NULL);
+    int resolve();
+    const string getMenuText()
+    {
+        sprintf(menuText, "%i", value);
+        return menuText;
+    };
+    AAWhatsX * clone() const;
+};
+
 /* set max level up on a levelup creature this is an Ai hint ability, no effect for players.*/
 class AAWhatsMax: public ActivatedAbility
 {
@@ -3656,12 +4588,22 @@ public:
     int resolve();
     AAWhatsMax * clone() const;
 };
+//counts a targetchooser for use later by other effects
+class AACountObject : public ActivatedAbility
+{
+public:
+    string value;
 
+    AACountObject(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * source, ManaCost * _cost = NULL, string value ="");
+    int resolve();
+    AACountObject * clone() const;
+};
 /* Can prevent a card from untapping next untap */
 class AAFrozen: public ActivatedAbility
 {
 public:
-    AAFrozen(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * _target, ManaCost * _cost = NULL);
+    bool freeze;
+    AAFrozen(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * _target, bool tap, ManaCost * _cost = NULL);
     int resolve();
     const string getMenuText();
     AAFrozen * clone() const;
@@ -3671,7 +4613,9 @@ class AANewTarget: public ActivatedAbility
 {
 public:
 bool retarget;
-    AANewTarget(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * _target,bool retarget = false, ManaCost * _cost = NULL);
+bool reequip;
+bool newhook;
+    AANewTarget(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * _target,bool retarget = false, ManaCost * _cost = NULL, bool reequip = false, bool newhook = false);
     int resolve();
     const string getMenuText();
     AANewTarget * clone() const;
@@ -3687,13 +4631,38 @@ public:
     const string getMenuText();
     AAMorph * clone() const;
 };
+
+class AAMeldFrom : public ActivatedAbility
+{
+public:
+    string _MeldedName;
+    AAMeldFrom(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * _target, string MeldedName = "");
+    int resolve();
+
+    const string getMenuText();
+    AAMeldFrom * clone() const;
+};
+/* meld*/
+class AAMeld : public ActivatedAbility
+{
+public:
+    string _MeldedName;
+    AAMeld(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * _target,string MeldedName = "");
+    int resolve();
+
+    const string getMenuText();
+    AAMeld * clone() const;
+};
+
 /* flip*/
 class AAFlip: public InstantAbility
 {
 public:
     vector<MTGAbility *> currentAbilities;
     string flipStats;
-    AAFlip(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * _target,string flipStats);
+    bool isflipcard;
+    bool forcedcopy;
+    AAFlip(GameObserver* observer, int id, MTGCardInstance * card, MTGCardInstance * _target,string flipStats, bool isflipcard = false, bool forcedcopy = false);
     int resolve();
     int testDestroy();
     const string getMenuText();
@@ -3739,7 +4708,8 @@ DYNAMIC_ABILITY_WHO_TARGETOPPONENT = 4,
 DYNAMIC_ABILITY_WHO_TOSOURCE = 5,
 DYNAMIC_ABILITY_WHO_SOURCECONTROLLER = 6,
 DYNAMIC_ABILITY_WHO_SOURCEOPPONENT = 7,
-DYNAMIC_ABILITY_WHO_NB = 8,
+DYNAMIC_ABILITY_WHO_ABILITYCONTROLLER = 8,
+DYNAMIC_ABILITY_WHO_NB = 9,
 
 };
 int type;
@@ -3770,8 +4740,6 @@ string menu;
 class ASwapPT: public InstantAbility
 {
 public:
-    int oldpower;
-    int oldtoughness;
     ASwapPT(GameObserver* observer, int _id, MTGCardInstance * _source, MTGCardInstance * _target) :
         InstantAbility(observer, _id, _source, _target)
     {
@@ -3785,13 +4753,17 @@ public:
         {
             while (_target->next)
                 _target = _target->next; //This is for cards such as rampant growth
-            oldpower = _target->power;
-            oldtoughness = _target->toughness;
-
-            _target->addToToughness(oldpower);
-            _target->addToToughness(-oldtoughness);
-            _target->power = oldtoughness;
-
+            
+            if(!_target->isSwitchedPT)
+            {
+                _target->isSwitchedPT = true;
+                _target->switchPT(true);
+            }
+            else
+            {
+                _target->isSwitchedPT = false;
+                _target->switchPT(false);
+            }
         }
         return 1;
     }
@@ -3803,13 +4775,12 @@ public:
         {
             while (_target->next)
                 _target = _target->next; //This is for cards such as rampant growth
-            oldpower = _target->power;
-            oldtoughness = _target->toughness;
-
-            _target->addToToughness(oldpower);
-            _target->addToToughness(-oldtoughness);
-            _target->power = oldtoughness;
-
+            
+            if(_target->isSwitchedPT)
+            {
+                _target->isSwitchedPT = false;
+                _target->switchPT(false);
+            }
         }
         return 1;
     }
@@ -3870,7 +4841,7 @@ public:
 
     void Update(float)
     {
-        if (newPhase != currentPhase && newPhase == phase)
+        if (newPhase != currentPhase && newPhase == phase && !game->currentPlayer->inPlay()->hasAbility(Constants::CANTCHANGELIFE))
         {
             if ((controller && game->currentPlayer == source->controller()) || (!controller && game->currentPlayer
                     != source->controller()))
@@ -4044,16 +5015,15 @@ public:
     vector<int> dontremove;
     bool addNewColors;
     bool remove;
-	bool removeCreatureSubtypes;
+    bool removeCreatureSubtypes;
     bool removeTypes;
     string menu;
     
     string newpower;
     bool newpowerfound;
-    int oldpower;
     string newtoughness;
     bool newtoughnessfound;
-    int oldtoughness;
+
     map<Damageable *, vector<MTGAbility *> > newAbilities;
     vector<string> newAbilitiesList;
     bool newAbilityFound;
@@ -4281,6 +5251,49 @@ public:
     ~AVanishing();
 };
 
+//Produce Mana when tapped for mana...
+class AProduceMana: public MTGAbility
+{
+public:
+    string ManaDescription;
+    string mana[5];
+
+    AProduceMana(GameObserver* observer, int _id, MTGCardInstance * _source, string _ManaDescription);
+    int receiveEvent(WEvent * event);
+    int produce();
+    const string getMenuText();
+    //virtual ostream& toString(ostream& out) const;
+    AProduceMana * clone() const;
+    ~AProduceMana();
+};
+
+//Produce Mana when a mana is engaged...
+class AEngagedManaAbility: public MTGAbility
+{
+public:
+    string colorname;
+    AEngagedManaAbility(GameObserver* observer, int _id, MTGCardInstance * _source, string _colorname) :
+    MTGAbility(observer, _id, _source)
+    {
+        colorname = _colorname;
+    }
+    int receiveEvent(WEvent * event)
+    {
+        if(WEventEngageMana * isManaProduced = dynamic_cast<WEventEngageMana *> (event))
+        {
+            if ((isManaProduced->card == source) && isManaProduced->color == Constants::GetColorStringIndex(colorname))
+            {
+                source->controller()->getManaPool()->add(Constants::GetColorStringIndex(colorname),1,source,true);
+            }
+        }
+        return 1;
+    }
+    AEngagedManaAbility * clone() const
+    {
+        return NEW AEngagedManaAbility(*this);
+    }
+};
+
 //Upkeep Cost
 class AUpkeep: public ActivatedAbility, public NestedAbility
 {
@@ -4318,10 +5331,11 @@ public:
     bool myturn;
     bool opponentturn;
     bool once;
+    bool checkexile;
     Player * abilityOwner;
 
     APhaseAction(GameObserver* observer, int _id, MTGCardInstance * card, MTGCardInstance * target, string sAbility, int restrictions = 0, int _phase =
-        MTG_PHASE_UPKEEP,bool forcedestroy = false,bool next = true,bool myturn = true,bool opponentturn = true,bool once = false);
+        MTG_PHASE_UPKEEP,bool forcedestroy = false,bool next = true,bool myturn = true,bool opponentturn = true,bool once = false, bool checkexile = false);
     void Update(float dt);
     int resolve();
     const string getMenuText();
@@ -4336,7 +5350,7 @@ public:
     string sAbility;
     APhaseAction * ability;
     APhaseActionGeneric(GameObserver* observer, int _id, MTGCardInstance * card, MTGCardInstance * target, string sAbility, int restrictions = 0, int _phase =
-            MTG_PHASE_UPKEEP,bool forcedestroy = false,bool next = true,bool myturn = false,bool opponentturn = false,bool once = false);
+            MTG_PHASE_UPKEEP,bool forcedestroy = false,bool next = true,bool myturn = false,bool opponentturn = false,bool once = false,bool checkexile = false);
     int resolve();
     const string getMenuText();
     APhaseActionGeneric * clone() const;
@@ -4344,6 +5358,95 @@ public:
 
 };
 
+//AAttackSetCost
+class AAttackSetCost: public MTGAbility
+{
+public:
+    string number;
+    bool pw;
+    AAttackSetCost(GameObserver* observer, int _id, MTGCardInstance * _source, string number, bool pw = false);
+    void Update(float dt);
+    int addToGame();
+    int destroy();
+    const string getMenuText();
+    AAttackSetCost * clone() const;
+};
+
+//ABlockSetCost
+class ABlockSetCost: public MTGAbility
+{
+public:
+    string number;
+    ABlockSetCost(GameObserver* observer, int _id, MTGCardInstance * _source, string number);
+    void Update(float dt);
+    int addToGame();
+    int destroy();
+    const string getMenuText();
+    ABlockSetCost * clone() const;
+};
+
+//AShackle
+class AShackle: public MTGAbility
+{
+public:
+    MTGCardInstance * Shackled;
+    Player * previousController;
+    bool resolved;
+    AShackle(GameObserver* observer, int _id, MTGCardInstance * card, MTGCardInstance * _target);
+    void Update(float dt);
+    void resolveShackle();
+    int resolve();
+    const string getMenuText();
+    AShackle * clone() const;
+    ~AShackle();
+private:
+    void returntoOwner(MTGCardInstance *_target);
+};
+
+//ShackleWrapper
+class AShackleWrapper: public InstantAbility
+{
+public:
+    AShackle * ability;
+    AShackleWrapper(GameObserver* observer, int _id, MTGCardInstance * card, MTGCardInstance * _target);
+    int resolve();
+    const string getMenuText();
+    AShackleWrapper * clone() const;
+    ~AShackleWrapper();
+
+};
+//Grant
+class AGrant : public MTGAbility
+{
+public:
+    MTGCardInstance * Blessed;
+    bool resolved;
+    MTGAbility * Granted;
+    MTGAbility * toGrant;
+    AGrant(GameObserver* observer, int _id, MTGCardInstance * card, MTGCardInstance * _target, MTGAbility * toGrant);
+    void Update(float dt);
+    void resolveGrant();
+    int resolve();
+    const string getMenuText();
+    AGrant * clone() const;
+    ~AGrant();
+private:
+    void removeGranted(MTGCardInstance *_target);
+};
+
+//GrantWrapper
+class AGrantWrapper : public InstantAbility
+{
+public:
+    AGrant * ability;
+    MTGAbility * Granted;
+    AGrantWrapper(GameObserver* observer, int _id, MTGCardInstance * card, MTGCardInstance * _target, MTGAbility * toGrant);
+    int resolve();
+    const string getMenuText();
+    AGrantWrapper * clone() const;
+    ~AGrantWrapper();
+
+};
 //ABlink
 class ABlink: public MTGAbility
 {
@@ -5175,6 +6278,14 @@ public:
                     who = source->owner;
             }
 
+            if (after == "postbattle")
+            {
+                if(game->getCurrentGamePhase() < MTG_PHASE_COMBATEND)
+                    after = "secondmain";
+                else
+                    after = "this";
+            }
+
             if (after == "this")//apply it right now.
             {
                 if(!applied)
@@ -5265,7 +6376,7 @@ public:
     {
         if(forceDestroy != -1)
             return 1;
-        if(!(source->hasType(Subtypes::TYPE_INSTANT)||source->hasType(Subtypes::TYPE_INSTANT)) && !source->isInPlay(game))
+        if(!(source->hasType(Subtypes::TYPE_INSTANT)||source->hasType(Subtypes::TYPE_SORCERY)) && !source->isInPlay(game))
             return 1;
         return 0;
     }
@@ -5297,12 +6408,31 @@ class AADepleter: public ActivatedAbilityTP
 {
 public:
     string nbcardsStr;
-
+    bool toexile;
+    bool colorrepeat;
+    bool namerepeat;
     AADepleter(GameObserver* observer, int _id, MTGCardInstance * card, Targetable * _target,string nbcardsStr, ManaCost * _cost = NULL,
-            int who = TargetChooser::UNSET);
+    int who = TargetChooser::UNSET, bool toexile = false, bool colorrepeat = false, bool namerepeat = false);
     int resolve();
     const string getMenuText();
     AADepleter * clone() const;
+};
+
+
+//AACascade
+class AACascade: public ActivatedAbility
+{
+public:
+    string nbcardsStr;
+    MTGCardInstance * castingThis;
+    vector<MTGCardInstance*>selectedCards;
+    vector<MTGCardInstance *>oldOrder;
+    vector<MTGCardInstance *>newOrder;
+    AACascade(GameObserver* observer, int _id, MTGCardInstance * _source, MTGCardInstance * _target, string nbcardsStr, ManaCost * _cost = NULL);
+    int resolve();
+    void toCastCard(MTGCardInstance * card);
+    const string getMenuText();
+    AACascade * clone() const;
 };
 
 //Generic skip turn/extra turn
@@ -5327,6 +6457,17 @@ public:
     int resolve();
     const string getMenuText();
     AAShuffle * clone() const;
+};
+
+//Mulligan
+class AAMulligan: public ActivatedAbilityTP
+{
+public:
+    AAMulligan(GameObserver* observer, int _id, MTGCardInstance * card, Targetable * _target, ManaCost * _cost = NULL, int who =
+            TargetChooser::UNSET);
+    int resolve();
+    const string getMenuText();
+    AAMulligan * clone() const;
 };
 
 //Remove Mana From ManaPool
@@ -5380,16 +6521,29 @@ public:
         {
             nbOpponents = source->blockers.size();
             if (nbOpponents <= MaxOpponent) return 0;
-            source->power += PowerModifier * (nbOpponents - MaxOpponent);
-            source->addToToughness(ToughnessModifier * (nbOpponents - MaxOpponent));
+            if(source->isSwitchedPT)
+            {
+                source->switchPT(false);
+                source->addptbonus(PowerModifier * (nbOpponents - MaxOpponent),ToughnessModifier * (nbOpponents - MaxOpponent));
+                source->switchPT(true);
+            }
+            else
+                source->addptbonus(PowerModifier * (nbOpponents - MaxOpponent),ToughnessModifier * (nbOpponents - MaxOpponent));
         }
         else if (WEventPhaseChange* pe = dynamic_cast<WEventPhaseChange*>(event))
         {
             if (MTG_PHASE_AFTER_EOT == pe->to->id && nbOpponents > MaxOpponent)
             {
-                source->power -= PowerModifier * (nbOpponents - MaxOpponent);
-                source->addToToughness(-ToughnessModifier * (nbOpponents - MaxOpponent));
-                nbOpponents = 0;
+                if(source->isSwitchedPT)
+                {
+                    source->switchPT(false);
+                    source->removeptbonus(PowerModifier * (nbOpponents - MaxOpponent),ToughnessModifier * (nbOpponents - MaxOpponent));
+                    source->switchPT(true);
+                }
+                else
+                    source->removeptbonus(PowerModifier * (nbOpponents - MaxOpponent),ToughnessModifier * (nbOpponents - MaxOpponent));
+
+                    nbOpponents = 0;
             }
         }
         return 1;
@@ -5427,6 +6581,37 @@ public:
     AEvolveAbility * clone() const
     {
         return NEW AEvolveAbility(*this);
+    }
+};
+
+//Reduce to .. Ali from Cairo...
+class AReduceToAbility: public MTGAbility
+{
+public:
+    string life_s;
+
+    AReduceToAbility(GameObserver* observer, int _id, MTGCardInstance * _source, string _life_s) :
+    MTGAbility(observer, _id, _source)
+    {
+        life_s = _life_s;
+    }
+    int receiveEvent(WEvent * event)
+    {
+        if(WEventDamage * isDamaged = dynamic_cast<WEventDamage *> (event))
+        {
+            if (isDamaged->damage->target->type_as_damageable == Damageable::DAMAGEABLE_PLAYER)
+            {
+                Player * p = (Player *) isDamaged->damage->target;
+                WParsedInt lifetoset(life_s, NULL, source);
+                if(p && p == source->controller() && p->life <= lifetoset.getValue() && !p->inPlay()->hasAbility(Constants::CANTCHANGELIFE))
+                    p->life = lifetoset.getValue();
+            }
+        }
+        return 1;
+    }
+    AReduceToAbility * clone() const
+    {
+        return NEW AReduceToAbility(*this);
     }
 };
 
@@ -5521,7 +6706,9 @@ public:
     string nameThis;
     MTGCardInstance * theNamedCard;
     bool noEvent;
-    AACastCard(GameObserver* observer, int _id, MTGCardInstance * _source, MTGCardInstance * _target,bool restricted,bool copied,bool _asNormal,string nameCard,string abilityName,bool _noEvent);
+    bool putinplay;
+    bool asNormalMadness;
+    AACastCard(GameObserver* observer, int _id, MTGCardInstance * _source, MTGCardInstance * _target,bool restricted,bool copied,bool _asNormal,string nameCard,string abilityName,bool _noEvent, bool putinplay,bool asNormalMadness = false);
 
     int testDestroy(){return 0;};
     void Update(float dt);
@@ -5708,13 +6895,13 @@ class GenericPaidAbility: public ActivatedAbility
 public:
     MTGAbility * baseAbility;
     ManaCost * optionalCost;
-
     string newName;
     string restrictions;
     string baseCost;
     string baseAbilityStr;
+    bool asAlternate;
 
-    GenericPaidAbility(GameObserver* observer, int id, MTGCardInstance * source, Targetable * target,string _newName,string _castRestriction,string _mayCost, string toAdd, ManaCost * cost = NULL);
+    GenericPaidAbility(GameObserver* observer, int id, MTGCardInstance * source, Targetable * target,string _newName,string _castRestriction,string _mayCost, string toAdd, bool asAlternate = false, ManaCost * cost = NULL);
     int resolve();
     const string getMenuText();
     GenericPaidAbility * clone() const;

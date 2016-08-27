@@ -76,6 +76,7 @@ class SacrificeCost : public ExtraCost
 {
 public:
   SacrificeCost(TargetChooser *_tc = NULL);
+  virtual int canPay();
   virtual int doPay();
   virtual SacrificeCost * clone() const;
 };
@@ -88,6 +89,19 @@ public:
   virtual int canPay();
   virtual int doPay();
   virtual LifeCost * clone() const;
+};
+
+//Specific life cost 
+class SpecificLifeCost : public ExtraCost
+{
+private:
+    int slc;
+
+public:
+  SpecificLifeCost(TargetChooser *_tc = NULL, int slc = 0);
+  virtual int canPay();
+  virtual int doPay();
+  virtual SpecificLifeCost * clone() const;
 };
 
 //phyrexian mana
@@ -142,6 +156,15 @@ public:
   virtual ToLibraryCost * clone() const;
 };
 
+//toGraveyard cost 
+class ToGraveCost : public ExtraCost
+{
+public:
+  ToGraveCost(TargetChooser *_tc = NULL);
+  virtual int doPay();
+  virtual ToGraveCost * clone() const;
+};
+
 //Millyourself cost 
 class MillCost : public ExtraCost
 {
@@ -156,7 +179,7 @@ public:
 class MillExileCost : public MillCost
 {
 public:
-	MillExileCost(TargetChooser *_tc = NULL);
+    MillExileCost(TargetChooser *_tc = NULL);
   virtual int doPay();
 };
 
@@ -180,6 +203,17 @@ public:
     virtual int canPay();
     virtual int doPay();
     virtual TapCost * clone() const;
+};
+
+//Snow  cost
+class SnowCost : public ExtraCost
+{
+public:
+    SnowCost();
+    virtual int isPaymentSet();
+    virtual int canPay();
+    virtual int doPay();
+    virtual SnowCost * clone() const;
 };
 
 //untap  cost
@@ -239,6 +273,38 @@ public:
   virtual int isPaymentSet();
   virtual int doPay();
   virtual Ninja * clone() const;
+};
+//Convoke
+class Convoke : public ExtraCost
+{
+public:
+    ManaCost * getReduction();
+    Convoke(TargetChooser *_tc = NULL);
+    virtual int canPay();
+    virtual int isPaymentSet();
+    virtual int doPay();
+    virtual Convoke * clone() const;
+};
+//delve
+class Delve : public ExtraCost
+{
+public:
+    Delve(TargetChooser *_tc = NULL);
+    virtual int canPay();
+    virtual int isPaymentSet();
+    virtual int doPay();
+    virtual Delve * clone() const;
+};
+//offering cost
+class Offering : public ExtraCost
+{
+public:
+    bool emerge;
+  Offering(TargetChooser *_tc = NULL, bool emerge = false);
+  virtual int canPay();
+  virtual int isPaymentSet();
+  virtual int doPay();
+  virtual Offering * clone() const;
 };
 
 class CounterCost : public ExtraCost

@@ -121,6 +121,7 @@ public:
     ManaCost* BuyBack;
     ManaCost* FlashBack;
     ManaCost* Retrace;
+    ManaCost* Bestow;
     ManaCost* morph;
     ManaCost* suspend;
 
@@ -211,8 +212,14 @@ public:
         MORPH_COST = 28,
         SUSPEND_COST = 29,
         COUNTERS = 30,
-		PUT_INTO_PLAY_WITH_KICKER = 31,
-		STANDARD_FIZZLER = 32,
+        PUT_INTO_PLAY_WITH_KICKER = 31,
+        STANDARD_FIZZLER = 32,
+        PAYZERO_COST = 33,
+        OVERLOAD_COST = 34,
+        BESTOW_COST = 35,
+        ATTACK_COST = 36,
+        BLOCK_COST = 37,
+        GRANTEDFLASHBACK_COST = 38,
     };
 };
 
@@ -418,6 +425,19 @@ public:
 
 };
 
+class TriggerRebound : public TriggerAtPhase
+{
+public:
+    int destroyActivated;
+    bool sourceUntapped;
+    bool sourceTap;
+    bool once,activeTrigger;
+    TriggerRebound(GameObserver* observer, int id, MTGCardInstance * source, Targetable * target,int _phaseId, int who = 0,bool sourceUntapped = false,bool sourceTap = false,bool once = false);
+    virtual TriggerRebound* clone() const;
+    virtual int testDestroy();
+
+};
+
 
 class GenericTriggeredAbility : public TriggeredAbility, public NestedAbility
 {
@@ -460,7 +480,7 @@ public:
     int parseRestriction(string s);
     int parseCastRestrictions(MTGCardInstance * card, Player * player, string restrictions);
     Counter * parseCounter(string s, MTGCardInstance * target, Spell * spell = NULL);
-    int parsePowerToughness(string s, int *power, int *toughness);	
+    int parsePowerToughness(string s, int *power, int *toughness);    
     int getAbilities(vector<MTGAbility *> * v, Spell * spell, MTGCardInstance * card = NULL, int id = 0, MTGGameZone * dest = NULL);
     MTGAbility* parseMagicLine(string s, int id, Spell * spell, MTGCardInstance *card, bool activated = false, bool forceUEOT = false, MTGGameZone * dest = NULL);
     int abilityEfficiency(MTGAbility * a, Player * p, int mode = MODE_ABILITY, TargetChooser * tc = NULL,Targetable * target = NULL);

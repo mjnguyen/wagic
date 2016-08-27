@@ -1,7 +1,8 @@
 [meta]
 author=Wagic Team
-name=Magic 2014
+name=Magic 2014 Core Set
 year=2013
+total=249
 [/meta]
 [card]
 primitive=Academy Raider
@@ -11,7 +12,7 @@ rarity=C
 [card]
 primitive=Accorder's Shield
 id=370581
-rarity=C
+rarity=U
 [/card]
 [card]
 primitive=Accursed Spirit
@@ -31,17 +32,17 @@ rarity=C
 [card]
 primitive=Air Servant
 id=370688
-rarity=C
-[/card]
-[card]
-primitive=Ajani, Caller of the Pride
-id=370680
-rarity=M
+rarity=U
 [/card]
 [card]
 primitive=Ajani's Chosen
 id=370750
 rarity=R
+[/card]
+[card]
+primitive=Ajani, Caller of the Pride
+id=370680
+rarity=M
 [/card]
 [card]
 primitive=Altar's Reap
@@ -121,7 +122,7 @@ rarity=C
 [card]
 primitive=Blur Sliver
 id=370593
-rarity=U
+rarity=C
 [/card]
 [card]
 primitive=Bogbrew Witch
@@ -156,7 +157,7 @@ rarity=C
 [card]
 primitive=Bubbling Cauldron
 id=370661
-rarity=R
+rarity=U
 [/card]
 [card]
 primitive=Burning Earth
@@ -184,11 +185,6 @@ id=370666
 rarity=C
 [/card]
 [card]
-primitive=Chandra, Pyromaster
-id=370637
-rarity=M
-[/card]
-[card]
 primitive=Chandra's Outrage
 id=370659
 rarity=C
@@ -197,6 +193,11 @@ rarity=C
 primitive=Chandra's Phoenix
 id=370691
 rarity=R
+[/card]
+[card]
+primitive=Chandra, Pyromaster
+id=370637
+rarity=M
 [/card]
 [card]
 primitive=Charging Griffin
@@ -261,7 +262,7 @@ rarity=R
 [card]
 primitive=Darksteel Forge
 id=370734
-rarity=R
+rarity=M
 [/card]
 [card]
 primitive=Darksteel Ingot
@@ -326,7 +327,7 @@ rarity=R
 [card]
 primitive=Doom Blade
 id=370609
-rarity=C
+rarity=U
 [/card]
 [card]
 primitive=Door of Destinies
@@ -337,6 +338,11 @@ rarity=R
 primitive=Dragon Egg
 id=370660
 rarity=U
+[/card]
+[card]
+primitive=Dragon Egg Dragon
+id=-370660
+rarity=T
 [/card]
 [card]
 primitive=Dragon Hatchling
@@ -411,27 +417,27 @@ rarity=C
 [card]
 primitive=Forest
 id=370598
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Forest
 id=370729
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Forest
 id=370756
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Forest
 id=370771
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Fortify
 id=370712
-rarity=U
+rarity=C
 [/card]
 [card]
 primitive=Frost Breath
@@ -444,14 +450,14 @@ id=370590
 rarity=R
 [/card]
 [card]
-primitive=Garruk, Caller of Beasts
-id=370687
-rarity=M
-[/card]
-[card]
 primitive=Garruk's Horde
 id=370684
 rarity=R
+[/card]
+[card]
+primitive=Garruk, Caller of Beasts
+id=370687
+rarity=M
 [/card]
 [card]
 primitive=Giant Growth
@@ -551,27 +557,22 @@ rarity=R
 [card]
 primitive=Island
 id=370608
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Island
 id=370611
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Island
 id=370647
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Island
 id=370773
-rarity=C
-[/card]
-[card]
-primitive=Jace, Memory Adept
-id=370728
-rarity=M
+rarity=L
 [/card]
 [card]
 primitive=Jace's Mindseeker
@@ -579,9 +580,14 @@ id=370638
 rarity=R
 [/card]
 [card]
+primitive=Jace, Memory Adept
+id=370728
+rarity=M
+[/card]
+[card]
 primitive=Kalonian Hydra
 id=370766
-rarity=R
+rarity=M
 [/card]
 [card]
 primitive=Kalonian Tusker
@@ -591,7 +597,7 @@ rarity=U
 [card]
 primitive=Lava Axe
 id=370595
-rarity=
+rarity=C
 [/card]
 [card]
 primitive=Lay of the Land
@@ -617,11 +623,6 @@ rarity=M
 primitive=Liliana's Reaver
 id=370740
 rarity=R
-[/card]
-[card]
-primitive=Zombie Token
-id=-339967
-rarity=T
 [/card]
 [card]
 primitive=Liturgy of Blood
@@ -691,22 +692,22 @@ rarity=U
 [card]
 primitive=Mountain
 id=370583
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Mountain
 id=370588
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Mountain
 id=370591
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Mountain
 id=370725
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Mutavault
@@ -736,7 +737,7 @@ rarity=R
 [card]
 primitive=Nightwing Shade
 id=370705
-rarity=U
+rarity=C
 [/card]
 [card]
 primitive=Oath of the Ancient Wood
@@ -786,22 +787,22 @@ rarity=C
 [card]
 primitive=Plains
 id=370615
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Plains
 id=370669
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Plains
 id=370679
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Plains
 id=370754
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Planar Cleansing
@@ -824,14 +825,14 @@ id=370656
 rarity=M
 [/card]
 [card]
-primitive=Pyromancer's Guantlet
+primitive=Pyromancer's Gauntlet
 id=370686
 rarity=R
 [/card]
 [card]
 primitive=Quag Sickness
 id=370714
-rarity=U
+rarity=C
 [/card]
 [card]
 primitive=Quicken
@@ -846,7 +847,7 @@ rarity=C
 [card]
 primitive=Ratchet Bomb
 id=370623
-rarity=C
+rarity=R
 [/card]
 [card]
 primitive=Regathan Firecat
@@ -896,7 +897,7 @@ rarity=R
 [card]
 primitive=Scourge of Valkas
 id=370584
-rarity=R
+rarity=M
 [/card]
 [card]
 primitive=Scroll Thief
@@ -951,17 +952,17 @@ rarity=M
 [card]
 primitive=Shimmering Grotto
 id=370631
-rarity=C
-[/card]
-[card]
-primitive=Shivan Dragon
-id=370825
-rarity=R
+rarity=U
 [/card]
 [card]
 primitive=Shiv's Embrace
 id=370707
 rarity=U
+[/card]
+[card]
+primitive=Shivan Dragon
+id=370825
+rarity=R
 [/card]
 [card]
 primitive=Shock
@@ -1031,15 +1032,16 @@ rarity=U
 [card]
 primitive=Staff of the Mind Magus
 id=370676
-[/card]
-[card]
-primitive=Staff of the Wild Magus
-id=370592
 rarity=U
 [/card]
 [card]
 primitive=Staff of the Sun Magus
 id=370635
+rarity=U
+[/card]
+[card]
+primitive=Staff of the Wild Magus
+id=370592
 rarity=U
 [/card]
 [card]
@@ -1070,22 +1072,22 @@ rarity=C
 [card]
 primitive=Swamp
 id=370703
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Swamp
 id=370727
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Swamp
 id=370731
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Swamp
 id=370785
-rarity=C
+rarity=L
 [/card]
 [card]
 primitive=Syphon Sliver
@@ -1105,7 +1107,7 @@ rarity=R
 [card]
 primitive=Thunder Strike
 id=370607
-rarity=U
+rarity=C
 [/card]
 [card]
 primitive=Tidebinder Mage
@@ -1115,7 +1117,7 @@ rarity=R
 [card]
 primitive=Time Ebb
 id=370641
-rarity=R
+rarity=C
 [/card]
 [card]
 primitive=Tome Scour
@@ -1215,7 +1217,7 @@ rarity=R
 [card]
 primitive=Windreader Sphinx
 id=370810
-rarity=U
+rarity=M
 [/card]
 [card]
 primitive=Windstorm
@@ -1241,11 +1243,6 @@ rarity=C
 primitive=Xathrid Necromancer
 id=370619
 rarity=R
-[/card]
-[card]
-primitive=Zombie Token
-id=-339968
-rarity=T
 [/card]
 [card]
 primitive=Young Pyromancer

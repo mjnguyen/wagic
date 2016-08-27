@@ -24,7 +24,7 @@
  };
  */
 
-const float GuiPhaseBar::zoom_big = (float)(1.5 * 1.4);
+const float GuiPhaseBar::zoom_big = (float)(1.5 * 1.25);
 const float GuiPhaseBar::zoom_small = 1.5;
 const float GuiPhaseBar::step = M_PI/6.0f;
 
@@ -36,9 +36,9 @@ namespace
     const unsigned kPhases = NB_MTG_PHASES - 2; //there are two phases we do not show
 }
 
-void GuiPhaseBar::DrawGlyph(JQuad *inQuad, int phaseId, float x, float y, float scale)
+void GuiPhaseBar::DrawGlyph(JQuad *inQuad, int phaseId, float x, float y, float scale, float z)
 {
-    inQuad->SetTextureRect(phaseId * (kWidth + 1), 0, kWidth, kHeight);
+    inQuad->SetTextureRect(phaseId * (kWidth + 1), z, kWidth, kHeight);
     JRenderer::GetInstance()->RenderQuad(inQuad, x, y - scale * kWidth/2, 0.0f, scale, scale);
 }
 
@@ -95,6 +95,7 @@ bool GuiPhaseBar::Leaving(JButton)
 void GuiPhaseBar::Render()
 {
     JQuadPtr quad = WResourceManager::Instance()->GetQuad("phasebar");
+    JQuadPtr phaseinfo = WResourceManager::Instance()->RetrieveTempQuad("fakebar.png"); //new fakebar graphics
     //uncomment to draw a hideous line across hires screens.
     // JRenderer::GetInstance()->DrawLine(0, CENTER, SCREEN_WIDTH, CENTER, ARGB(255, 255, 255, 255));
 
@@ -110,7 +111,10 @@ void GuiPhaseBar::Render()
         //hint: sin(circPos + PI/2) = cos(circPos)
         const float glyphScale = float(zoomFactor * cosf(circPos) * 0.5f);
 
-        DrawGlyph(quad.get(), (displayedPhaseId - 2 + i + kPhases) % kPhases, 0, glyphY, glyphScale);
+        if (observer->currentPlayer && observer->currentPlayer->isAI() && !observer->currentPlayer->opponent()->isAI())
+            DrawGlyph(quad.get(), (displayedPhaseId - 2 + i + kPhases) % kPhases, 0, glyphY, glyphScale, 29);
+        else
+            DrawGlyph(quad.get(), (displayedPhaseId - 2 + i + kPhases) % kPhases, 0, glyphY, glyphScale, 0);
     }
 
     //print phase name
@@ -145,6 +149,16 @@ void GuiPhaseBar::Render()
     string phaseNameToTranslate = observer->phaseRing->phaseName(displayedPhaseId%kPhases + 1);
     phaseNameToTranslate = _(phaseNameToTranslate);
     sprintf(buf, _("(%s%s) %s").c_str(), currentP.c_str(), interrupt.c_str(),phaseNameToTranslate.c_str());
+#if !defined (PSP)
+    if(phaseinfo.get())
+    {
+        
+        phaseinfo->mWidth = font->GetStringWidth(buf)+12.f;
+        phaseinfo->SetHotSpot(phaseinfo->mWidth -4, 0);
+        //phaseinfo->mHeight = font->GetHeight()+5.f;
+        JRenderer::GetInstance()->RenderQuad(phaseinfo.get(),SCREEN_WIDTH_F,0,0,2.2f, SCREEN_HEIGHT_F / phaseinfo->mHeight);
+    }
+#endif
     font->DrawString(buf, SCREEN_WIDTH - 5, 2, JGETEXT_RIGHT);
 }
 

@@ -85,10 +85,19 @@ void GameStateMenu::Create()
     {
         for (int j = 0; j < 2; j++)
         {
+#if defined (PSP)
             sprintf(buf, "menuicons%d%d", i, j);
             mIcons[n] = WResourceManager::Instance()->RetrieveQuad("menuicons.png", 2 + i * 36.0f, 2.0f + j * 36.0f, 32.0f, 32.0f, buf);
+#else
+            sprintf(buf, "miconslarge%d%d", i, j);
+            mIcons[n] = WResourceManager::Instance()->RetrieveQuad("miconslarge.png", 4 + i * 72.0f, 4.0f + j * 72.0f, 72.0f, 72.0f, buf);
+#endif
             if (mIcons[n])
+            {
+                mIcons[n]->mHeight = 36.f;
+                mIcons[n]->mWidth = 36.f;
                 mIcons[n]->SetHotSpot(16, 16);
+            }
             n++;
         }
     }
@@ -108,7 +117,7 @@ void GameStateMenu::Create()
     {
         currentState = MENU_STATE_MAJOR_LANG | MENU_STATE_MINOR_NONE;
     }
-    scroller = NEW TextScroller(Fonts::MAIN_FONT, SCREEN_WIDTH / 2 - 90, SCREEN_HEIGHT - 17, 180);
+    scroller = NEW TextScroller(Fonts::MAIN_FONT, SCREEN_WIDTH / 2 + 65, 5, 180);
     scrollerSet = 0;
     splashTex = NULL;
 
@@ -141,10 +150,10 @@ void GameStateMenu::Start()
     WResourceManager::Instance()->ClearUnlocked();
 
     bgTexture = WResourceManager::Instance()->RetrieveTexture("menutitle.png", RETRIEVE_LOCK);
-    mBg = WResourceManager::Instance()->RetrieveQuad("menutitle.png", 0, 0, 256, 166); // Create background quad for rendering.
+    mBg = WResourceManager::Instance()->RetrieveQuad("menutitle.png", 0, 0, 0, 0); // Create background quad for rendering.
 
     if (mBg)
-        mBg->SetHotSpot(128, 50);
+        mBg->SetHotSpot(mBg->mWidth/2, 0);
 
     if (MENU_STATE_MAJOR_MAINMENU == currentState)
         currentState = currentState | MENU_STATE_MINOR_FADEIN;
@@ -160,22 +169,22 @@ void GameStateMenu::genNbCardsStr()
     PlayerData * playerdata = NEW PlayerData(MTGCollection());
     size_t totalUnique =  MTGCollection()->primitives.size();
     size_t totalPrints = MTGCollection()->totalCards();
-
+    
     if (totalUnique != totalPrints)
     {
         if (playerdata && !options[Options::ACTIVE_PROFILE].isDefault())
-            sprintf(nbcardsStr, _("%s: %i cards (%i) (%i unique)").c_str(), options[Options::ACTIVE_PROFILE].str.c_str(),
+            sprintf(GameApp::mynbcardsStr, _("%s: %i cards (%i) (%i unique)").c_str(), options[Options::ACTIVE_PROFILE].str.c_str(),
                             playerdata->collection->totalCards(), totalPrints,totalUnique);
         else
-            sprintf(nbcardsStr, _("%i cards (%i unique)").c_str(),totalPrints,totalUnique);
+            sprintf(GameApp::mynbcardsStr, _("%i cards (%i unique)").c_str(),totalPrints,totalUnique);
     }
     else
     {
         if (playerdata && !options[Options::ACTIVE_PROFILE].isDefault())
-            sprintf(nbcardsStr, _("%s: %i cards (%i)").c_str(), options[Options::ACTIVE_PROFILE].str.c_str(),
+            sprintf(GameApp::mynbcardsStr, _("%s: %i cards (%i)").c_str(), options[Options::ACTIVE_PROFILE].str.c_str(),
                             playerdata->collection->totalCards(), totalPrints);
         else
-            sprintf(nbcardsStr, _("%i cards").c_str(),totalPrints);
+            sprintf(GameApp::mynbcardsStr, _("%i cards").c_str(),totalPrints);
     }
 
     SAFE_DELETE(playerdata);
@@ -436,9 +445,11 @@ void GameStateMenu::ensureMGuiController()
                     (i == 0)));
             }
 
-            JQuadPtr jq = WResourceManager::Instance()->RetrieveTempQuad("button_shoulder.png");
+            JQuadPtr jq = WResourceManager::Instance()->RetrieveTempQuad("button_shoulder.png");//I set this transparent, don't remove button_shoulder.png
             if (!jq.get()) return;
             jq->SetHFlip(false);
+            jq->mWidth = 64.f;
+            jq->mHeight = 32.f;
             jq->SetColor(ARGB(abs(255),255,255,255));
             mFont = WResourceManager::Instance()->GetWFont(Fonts::OPTION_FONT);
             vector<ModRulesOtherMenuItem *>otherItems = gModRules.menu.other;
@@ -446,7 +457,7 @@ void GameStateMenu::ensureMGuiController()
                 mGuiController->Add(NEW OtherMenuItem(
                                        otherItems[0]->mActionId,
                                        mFont, otherItems[0]->mDisplayName,
-                                       SCREEN_WIDTH - 64, 2,
+                                       SCREEN_WIDTH - 64, SCREEN_HEIGHT_F-26.f,
                                        jq.get(), jq.get(), otherItems[0]->mKey, false
                                        ));
             }
@@ -472,7 +483,7 @@ void GameStateMenu::Update(float dt)
                 mParent->mpNetwork->connect(mParent->mServerAddress);
                 // we let the server choose the game mode
                 mParent->gameType = GAME_TYPE_SLAVE;
-			          // just to select one, the HOST is in control here.
+                      // just to select one, the HOST is in control here.
                 mParent->rules = Rules::getRulesByFilename("classic.txt");
                 hasChosenGameType = true;
                 subMenuController->Close();
@@ -590,16 +601,16 @@ void GameStateMenu::Update(float dt)
     case MENU_STATE_NETWORK_DEFINE:
         if(MENU_STATE_MINOR_NONE == (currentState & MENU_STATE_MINOR))
         {
-			currentState = MENU_STATE_MAJOR_SUBMENU;
+            currentState = MENU_STATE_MAJOR_SUBMENU;
             subMenuController = NEW SimpleMenu(JGE::GetInstance(), WResourceManager::Instance(), MENU_FIRST_DUEL_SUBMENU, this, Fonts::MENU_FONT, 150, 60);
-			if (subMenuController)
-			{
-				subMenuController->Add(SUBMENUITEM_HOST_GAME, "Host a game");
-				subMenuController->Add(SUBMENUITEM_JOIN_GAME, "Join a game");
-				subMenuController->Add(SUBMENUITEM_CANCEL, "Cancel");
-			}
-		}
-		break;
+            if (subMenuController)
+            {
+                subMenuController->Add(SUBMENUITEM_HOST_GAME, "Host a game");
+                subMenuController->Add(SUBMENUITEM_JOIN_GAME, "Join a game");
+                subMenuController->Add(SUBMENUITEM_CANCEL, "Cancel");
+            }
+        }
+        break;
     case MENU_STATE_NETWORK_WAIT:
         if(MENU_STATE_MINOR_NONE == (currentState & MENU_STATE_MINOR))
         {
@@ -610,9 +621,9 @@ void GameStateMenu::Update(float dt)
             }
             else if(!subMenuController)
             {
-				string aString;
-				mParent->mpNetwork->getServerIp(aString);
-				aString = "Waiting for connection to " + aString;
+                string aString;
+                mParent->mpNetwork->getServerIp(aString);
+                aString = "Waiting for connection to " + aString;
 
                 subMenuController = NEW SimpleMenu(JGE::GetInstance(), WResourceManager::Instance(), MENU_FIRST_DUEL_SUBMENU, this, Fonts::MENU_FONT, 150, 60, aString.c_str());
                 if (subMenuController)
@@ -724,9 +735,22 @@ void GameStateMenu::RenderTopMenu()
 
     WFont * mFont = WResourceManager::Instance()->GetWFont(Fonts::MAIN_FONT);
     mFont->SetScale(DEFAULT_MAIN_FONT_SCALE);
-    mFont->SetColor(ARGB(128,255,255,255));
-    mFont->DrawString(GAME_VERSION, rightTextPos, 5, JGETEXT_RIGHT);
-    mFont->DrawString(nbcardsStr, leftTextPos, 5);
+    //mFont->SetColor(ARGB(128,255,255,255));
+    mFont->SetColor(ARGB(220,255,255,255));
+    /*//tooltip
+    JQuadPtr tooltips;
+    tooltips = WResourceManager::Instance()->RetrieveTempQuad("tooltips.png");//new graphics tooltips
+    if (tooltips.get())
+    {
+        float xscale = (mFont->GetStringWidth(GAME_VERSION)+(mFont->GetStringWidth(GAME_VERSION)/18)) / tooltips->mWidth;
+        float yscale = mFont->GetHeight() / tooltips->mHeight;
+        tooltips->SetHotSpot(tooltips->mWidth / 2,0);
+        JRenderer::GetInstance()->RenderQuad(tooltips.get(), SCREEN_WIDTH_F/2, SCREEN_HEIGHT_F-17,0,xscale,yscale);
+    }
+    //end tooltip*/
+    mFont->DrawString(GAME_VERSION, (SCREEN_WIDTH_F/2) - (mFont->GetStringWidth(GAME_VERSION))/2, SCREEN_HEIGHT_F-17, JGETEXT_LEFT);
+    mFont->SetColor(ARGB(128,255,255,255));//reset color
+    mFont->DrawString(GameApp::mynbcardsStr, leftTextPos, 5);
     renderer->FillRect(leftTextPos, 26, 104, 8, ARGB(255, 100, 90, 60));
     renderer->FillRect(leftTextPos + 2, 28, (float)(gamePercentComplete()), 4, ARGB(255,220,200, 125));
     char buf[512];
@@ -771,6 +795,24 @@ void GameStateMenu::Render()
             else
                 sprintf(text, "%s", _("LOADING...").c_str());
         }
+#if !defined (PSP)
+        //tooltip & overlay
+        JQuadPtr menubar;
+        menubar = WResourceManager::Instance()->RetrieveTempQuad("menubar.png");//new graphics menubar
+        if (menubar.get())
+        {
+            float xscale = SCREEN_WIDTH / menubar->mWidth;
+            float yscale = mFont->GetHeight() / menubar->mHeight;
+            renderer->RenderQuad(menubar.get(), 0, (SCREEN_HEIGHT - menubar->mHeight) - 18,0,xscale,yscale);
+        }
+        else
+        {
+        //rectangle
+            renderer->FillRect(0, SCREEN_HEIGHT - 50, SCREEN_WIDTH + 1.5f, mFont->GetHeight(),ARGB(225,5,5,5));;
+            renderer->DrawRect(0, SCREEN_HEIGHT - 50, SCREEN_WIDTH + 1.5f, mFont->GetHeight(),ARGB(200, 204, 153, 0));
+        //end
+        }
+#endif
         mFont->SetColor(ARGB(170,0,0,0));
         mFont->DrawString(text, SCREEN_WIDTH / 2 + 2, SCREEN_HEIGHT - 50 + 2, JGETEXT_CENTER);
         mFont->SetColor(ARGB(255,255,255,255));
@@ -790,7 +832,7 @@ void GameStateMenu::Render()
         scroller->Render();
 
         if (mBg.get())
-            renderer->RenderQuad(mBg.get(), SCREEN_WIDTH / 2, 50);
+            renderer->RenderQuad(mBg.get(), SCREEN_WIDTH_F/2, 2, 0, 256 / mBg->mWidth, 166 / mBg->mHeight);
 
         RenderTopMenu();
 
@@ -909,7 +951,7 @@ void GameStateMenu::ButtonPressed(int controllerId, int controlId)
                 subMenuController->Close();
             }
 #ifdef NETWORK_SUPPORT
-			SAFE_DELETE(mParent->mpNetwork);
+            SAFE_DELETE(mParent->mpNetwork);
 #endif //NETWORK_SUPPORT
             currentState = MENU_STATE_MAJOR_MAINMENU | MENU_STATE_MINOR_SUBMENU_CLOSING;
             break;
@@ -960,7 +1002,6 @@ ostream& GameStateMenu::toString(ostream& out) const
                  << " ; mCreditsYPos : " << mCreditsYPos
                  << " ; currentState : " << currentState
                  << " ; mVolume : " << mVolume
-                 << " ; nbcardsStr : " << nbcardsStr
                  << " ; mCurrentSetName : " << mCurrentSetName
                  << " ; mCurrentSetFileName : " << mCurrentSetFileName
                  << " ; mReadConf : " << mReadConf

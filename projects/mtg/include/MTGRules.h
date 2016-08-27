@@ -58,6 +58,10 @@ public:
     int Angel[2];
     bool dragonbonusgranted[2];
     int dragon[2];
+    bool eldrazibonusgranted[2];
+    int eldrazi[2];
+    bool werewolfbonusgranted[2];
+    int werewolf[2];
 
     int receiveEvent(WEvent * event);
     void grantAward(string awardName,int amount);
@@ -76,7 +80,9 @@ public:
     MTGPutInPlayRule(GameObserver* observer, int _id);
     const string getMenuText()
     {
-        return "cast card normally";
+        if(game && game->gameType() == GAME_TYPE_MOMIR)
+            return "Play Land";
+        return "Cast Card Normally";
     }
     virtual MTGPutInPlayRule * clone() const;
 };
@@ -90,7 +96,7 @@ public:
     MTGKickerRule(GameObserver* observer, int _id);
     const string getMenuText()
     {
-        return "pay kicker";
+        return "Pay Kicker";
     }
     virtual MTGKickerRule * clone() const;
 };
@@ -99,7 +105,7 @@ class MTGAlternativeCostRule: public PermanentAbility
 {
 protected:
     int isReactingToClick(MTGCardInstance * card, ManaCost * mana, ManaCost *alternateManaCost);
-    int reactToClick(MTGCardInstance * card, ManaCost * alternateManaCost, int paymentType = ManaCost::MANA_PAID);
+    int reactToClick(MTGCardInstance * card, ManaCost * alternateManaCost, int paymentType = ManaCost::MANA_PAID, bool overload = false);
     string alternativeName;
 public:
     int isReactingToClick(MTGCardInstance * card, ManaCost * mana = NULL);
@@ -110,7 +116,7 @@ public:
     {
         if(alternativeName.size())
             return alternativeName.c_str();
-        return "pay alternative cost";
+        return "Pay Alternative Cost";
     }
     virtual MTGAlternativeCostRule * clone() const;
 };
@@ -124,7 +130,7 @@ public:
     MTGBuyBackRule(GameObserver* observer, int _id);
     const string getMenuText()
     {
-        return "cast and buy back";
+        return "Cast and Buyback";
     }
     virtual MTGBuyBackRule * clone() const;
 };
@@ -139,9 +145,24 @@ public:
     MTGFlashBackRule(GameObserver* observer, int _id);
     const string getMenuText()
     {
-        return "flash back";
+        return "Flashback";
     }
     virtual MTGFlashBackRule * clone() const;
+};
+
+class MTGTempFlashBackRule: public MTGAlternativeCostRule
+{
+public:
+
+    int isReactingToClick(MTGCardInstance * card, ManaCost * mana = NULL);
+    int reactToClick(MTGCardInstance * card);
+    virtual ostream& toString(ostream& out) const;
+    MTGTempFlashBackRule(GameObserver* observer, int _id);
+    const string getMenuText()
+    {
+        return "Flashback Manacost";
+    }
+    virtual MTGTempFlashBackRule * clone() const;
 };
 
 class MTGRetraceRule: public MTGAlternativeCostRule
@@ -153,7 +174,7 @@ public:
     MTGRetraceRule(GameObserver* observer, int _id);
     const string getMenuText()
     {
-        return "retrace";
+        return "Retrace";
     }
     virtual MTGRetraceRule * clone() const;
 };
@@ -168,23 +189,54 @@ public:
     MTGMorphCostRule(GameObserver* observer, int _id);
     const string getMenuText()
     {
-        return "play morphed";
+        return "Play Morphed";
     }
     virtual MTGMorphCostRule * clone() const;
 };
 
-class MTGPlayFromGraveyardRule: public MTGAlternativeCostRule
+class MTGPayZeroRule: public MTGAlternativeCostRule
+{
+public:
+    int isReactingToClick(MTGCardInstance * card, ManaCost * mana = NULL);
+    int reactToClick(MTGCardInstance * card);
+    string CustomName;
+    virtual ostream& toString(ostream& out) const;
+    MTGPayZeroRule(GameObserver* observer, int _id);
+    const string getMenuText()
+    {
+        if(CustomName.size())
+            return CustomName.c_str();
+        return "Pay Zero To Cast";
+    }
+    virtual MTGPayZeroRule * clone() const;
+};
+
+class MTGOverloadRule: public MTGAlternativeCostRule
 {
 public:
     int isReactingToClick(MTGCardInstance * card, ManaCost * mana = NULL);
     int reactToClick(MTGCardInstance * card);
     virtual ostream& toString(ostream& out) const;
-    MTGPlayFromGraveyardRule(GameObserver* observer, int _id);
+    MTGOverloadRule(GameObserver* observer, int _id);
     const string getMenuText()
     {
-        return "cast card from graveyard";
+        return "Overload";
     }
-    virtual MTGPlayFromGraveyardRule * clone() const;
+    virtual MTGOverloadRule * clone() const;
+};
+
+class MTGBestowRule : public MTGAlternativeCostRule
+{
+public:
+    int isReactingToClick(MTGCardInstance * card, ManaCost * mana = NULL);
+    int reactToClick(MTGCardInstance * card);
+    virtual ostream& toString(ostream& out) const;
+    MTGBestowRule(GameObserver* observer, int _id);
+    const string getMenuText()
+    {
+        return "Bestow";
+    }
+    virtual MTGBestowRule * clone() const;
 };
 
 
@@ -199,6 +251,18 @@ public:
     MTGSuspendRule(GameObserver* observer, int _id);
     const string getMenuText();
     virtual MTGSuspendRule * clone() const;
+};
+
+class MTGAttackCostRule: public PermanentAbility
+{
+public:
+    string scost;
+    int isReactingToClick(MTGCardInstance * card, ManaCost * mana = NULL);
+    int reactToClick(MTGCardInstance * card);
+    virtual ostream& toString(ostream& out) const;
+    MTGAttackCostRule(GameObserver* observer, int _id);
+    const string getMenuText();
+    virtual MTGAttackCostRule * clone() const;
 };
 
 class MTGAttackRule: public PermanentAbility, public Limitor
@@ -256,6 +320,18 @@ public:
     virtual MTGCombatTriggersRule * clone() const;
 };
 
+class MTGBlockCostRule: public PermanentAbility
+{
+public:
+    string scost;
+    int isReactingToClick(MTGCardInstance * card, ManaCost * mana = NULL);
+    int reactToClick(MTGCardInstance * card);
+    virtual ostream& toString(ostream& out) const;
+    MTGBlockCostRule(GameObserver* observer, int _id);
+    const string getMenuText();
+    virtual MTGBlockCostRule * clone() const;
+};
+
 class MTGBlockRule: public PermanentAbility
 {
 public:
@@ -293,15 +369,15 @@ public:
 class MTGDredgeRule: public PermanentAbility, public ReplacementEffect
 {
 public:
-    vector<MTGCardInstance*>soulbonders;
+    //vector<MTGCardInstance*>soulbonders;
     TargetChooser * tcb;
     MTGAbility * dredgeAbility;
     MTGAbility * targetAbility;
     MTGAbility * targetAbilityAdder;
     MTGAbility * targetAbility1;
     MTGAbility * mod;
-    MTGAbility * activateDredge;
-    vector<MTGAbility*>pairing;
+    //MTGAbility * activateDredge;
+    //vector<MTGAbility*>pairing;
     MTGDredgeRule(GameObserver* observer, int _id);
     WEvent * replace(WEvent *e);
     virtual ostream& toString(ostream& out) const;
@@ -418,28 +494,28 @@ private:
     vector<int> pool[20];
     int initialized;
 public:
-	MTGAllCards * collection;
-	MTGCardInstance * genEquip(int id);
+    MTGAllCards * collection;
+    MTGCardInstance * genEquip(int id);
     MTGStoneHewerRule(GameObserver* observer, int _id, MTGAllCards * _collection);
-	int receiveEvent(WEvent * event);
-	const string getMenuText()
-	{
-		return "Stone Hewer";
-	}
-	virtual ostream& toString(ostream& out) const;
-	virtual MTGStoneHewerRule * clone() const;
+    int receiveEvent(WEvent * event);
+    const string getMenuText()
+    {
+        return "Stone Hewer";
+    }
+    virtual ostream& toString(ostream& out) const;
+    virtual MTGStoneHewerRule * clone() const;
 };
 //Hermit Druid avatar mode
 class MTGHermitRule: public PermanentAbility
 {
 public:
     MTGHermitRule(GameObserver* observer, int _id);
-	int receiveEvent(WEvent * event);
-	const string getMenuText()
-	{
-		return "Hermit";
-	}
-	virtual MTGHermitRule * clone() const;
+    int receiveEvent(WEvent * event);
+    const string getMenuText()
+    {
+        return "Hermit";
+    }
+    virtual MTGHermitRule * clone() const;
 };
 //
 /* LifeLink */

@@ -55,7 +55,8 @@ public:
     Pos* view;
     int X;
     int castX;
-    int alternateCostPaid[ManaCost::MANA_PAID_WITH_SUSPEND + 1]; 
+    int setX;
+    int alternateCostPaid[ManaCost::MANA_PAID_WITH_BESTOW + 1]; 
     int paymenttype;
     int castMethod; /* Tells if the card reached its current zone by being cast or not (brought into the zone by an effect). non 0 == cast, 0 == not cast */
     int frozen;
@@ -72,7 +73,11 @@ public:
     int regenerateTokens;
     int isToken;
     int origpower;
+    int basepower;//to keep origpower intact
+    int pbonus;
     int origtoughness;
+    int basetoughness;//to keep origtoughness intact
+    int tbonus;
     int isMultiColored;
     int isLeveler;
     bool enchanted;
@@ -84,12 +89,17 @@ public:
     bool turningOver;
     bool isMorphed;
     bool isFlipped;
+    string MeldedFrom;
     bool isPhased;
+    bool isCascaded;
     int phasedTurn;
+    bool handEffects;
     bool graveEffects;
     bool exileEffects;
     bool suspended;
     bool miracle;
+    bool hasCopiedToken;
+    bool isBestowed;
     int chooseacolor;
     string chooseasubtype;
     int coinSide;//1 = tails
@@ -100,15 +110,18 @@ public:
     int notblocked;
     int fresh;
     int MaxLevelUp;
+    int CountedObjects;
     int kicked;
     int dredge;
     bool isDualWielding;
     bool stillNeeded;
     Player * lastController;
+    Player * previousController;
     MTGGameZone * getCurrentZone();
     MTGGameZone * previousZone;
     MTGCardInstance * previous;
     MTGCardInstance * next;
+    MTGAbility * TokenAndAbility;
     int doDamageTest;
     bool skipDamageTestOnce;
     int summoningSickness;
@@ -160,6 +173,7 @@ public:
     MTGCardInstance * myPair;
     MTGCardInstance * createSnapShot();
     MTGCardInstance * storedSourceCard;
+    MTGCardInstance * shackled;
     MTGCardInstance * isDefenser();
     int initAttackersDefensers();
     MTGCardInstance * getNextOpponent(MTGCardInstance * previous=NULL);
@@ -182,6 +196,7 @@ public:
 
     int addToToughness(int value);
     int setToughness(int value);
+    int isSettingBase;
 
     vector<TargetChooser *>protections;
     int addProtection(TargetChooser * tc);
@@ -212,9 +227,68 @@ public:
     int isUntapping();
     int isTapped();
     void untap();
-    void tap();
+    void tap(bool sendNoEvent = false);
     void attemptUntap();
 
+    //cda and other func
+    void stripPTbonus();
+    void minusPTbonus(int p = 0, int t = 0);
+    void plusPTbonus(int p = 0, int t = 0);
+    void applyPTbonus();
+    void addcounter(int p = 0, int t = 0);
+    void removecounter(int p = 0, int t = 0);
+    void addptbonus(int p = 0, int t = 0);
+    void removeptbonus(int p = 0, int t = 0);
+    void addbaseP(int p = 0);
+    void addbaseT(int t = 0);
+    void revertbaseP();
+    void revertbaseT();
+    int getCurrentPower();
+    int getCurrentToughness();
+    int LKIpower;
+    int LKItoughness;
+    void cdaPT(int p = 0, int t = 0);
+    bool isCDA;
+    void switchPT(bool apply = false);
+    int swapP;
+    int swapT;
+    bool isSwitchedPT;
+    bool isACopier;
+    bool bypassTC;
+    bool discarded;
+    int copiedID;
+    bool StackIsEmptyandSorcerySpeed();
+    bool isTargetted();
+    int cardistargetted;
+    bool isTargetter();
+    int cardistargetter;
+    int myconvertedcost;
+    ManaCost * computeNewCost(MTGCardInstance * card,ManaCost * oldCost, ManaCost * refCost,bool noTrinisphere = false);
+    int countTrini;
+    vector<MTGCardInstance*>imprintedCards;
+    int attackCost;
+    int attackCostBackup;
+    int attackPlaneswalkerCost;
+    int attackPlaneswalkerCostBackup;
+    int blockCost;
+    int blockCostBackup;
+    int imprintG;
+    int imprintU;
+    int imprintR;
+    int imprintB;
+    int imprintW;
+    int canproduceG;
+    int canproduceU;
+    int canproduceR;
+    int canproduceB;
+    int canproduceW;
+    int canproduceC;
+    int entersBattlefield;
+    string currentimprintName;
+    vector<string>imprintedNames;
+
+    MTGCardInstance * revealedLast;//last card revealed by a ability this card owns.
+    bool MadnessPlay;
     void eventattacked();
     void eventattackedAlone();
     void eventattackednotblocked();

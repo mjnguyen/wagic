@@ -10,7 +10,11 @@
 #include "JLogger.h"
 #include <sstream>
 
-#define HUGE_CACHE_LIMIT 20000000  // Size of the cache for Windows and Linux (in bytes)
+#if defined (PSP) 
+#define HUGE_CACHE_LIMIT 25000000  // Size of the cache for PSP (in bytes) - old value is 20mb - reverted
+#else
+#define HUGE_CACHE_LIMIT 60000000  // Size of the cache for Windows and Linux (in bytes) - old value is 20mb increased to 60mb
+#endif
 #define SAMPLES_CACHE_SIZE 1500000  // Size in bytes of the cached samples
 #define PSI_CACHE_SIZE 500000  // Size in bytes of the cached particles
 #define TEXTURES_CACHE_MINSIZE 2000000  // Minimum size of the cache on the PSP. The program should complain if the cache ever gets smaller than this
@@ -202,8 +206,8 @@ public:
 #endif
 
 private:
-    bool bThemedCards;		//Does the theme have a "sets" directory for overwriting cards?
-    void FlattenTimes();	//To prevent bad cache timing on int overflow
+    bool bThemedCards;      //Does the theme have a "sets" directory for overwriting cards?
+    void FlattenTimes();    //To prevent bad cache timing on int overflow
 
     //For cached stuff
     WCache<WCachedTexture,JTexture> textureWCache;

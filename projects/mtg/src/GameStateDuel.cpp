@@ -28,9 +28,6 @@
 #include <time.h>
 #endif
 
-const float MENU_FONT_SCALE = 1.0f;
-
-
 enum ENUM_DUEL_STATE
 {
     DUEL_STATE_UNSET = 0,
@@ -1040,7 +1037,14 @@ void GameStateDuel::Render()
     WFont * mFont = WResourceManager::Instance()->GetWFont(Fonts::MAIN_FONT);
     JRenderer * r = JRenderer::GetInstance();
     r->ClearScreen(ARGB(0,0,0,0));
-
+#if !defined (PSP)
+    JTexture * wpTex = WResourceManager::Instance()->RetrieveTexture("bgdeckeditor.jpg");
+    if (wpTex)
+    {
+        JQuadPtr wpQuad = WResourceManager::Instance()->RetrieveTempQuad("bgdeckeditor.jpg");
+        JRenderer::GetInstance()->RenderQuad(wpQuad.get(), 0, 0, 0, SCREEN_WIDTH_F / wpQuad->mWidth, SCREEN_HEIGHT_F / wpQuad->mHeight);
+    }
+#endif
     //render the game until someone did win the game (otherwise it crashes sometimes under linux)
     if (game && !game->didWin())
         game->Render();
@@ -1098,7 +1102,7 @@ void GameStateDuel::Render()
                 char buf[4096];
                 mFont->SetColor(ARGB(255,255,255,255));
 
-				int elapsedTime = testSuite->getElapsedTime();
+                int elapsedTime = testSuite->getElapsedTime();
                 sprintf(buf, "Time to run the tests: %is", elapsedTime/1000);
                 mFont->DrawString(buf,0,SCREEN_HEIGHT/2 - 20);
 
@@ -1168,7 +1172,7 @@ void GameStateDuel::Render()
                 opponentMenu->Render();
                 // display the selected player deck name too
                 string selectedPlayerDeckName = _("Player Deck: ").c_str() + game->players[0]->deckName;
-                mFont->DrawString( selectedPlayerDeckName.c_str(), 30, 40);
+                mFont->DrawString( selectedPlayerDeckName.c_str(),  (SCREEN_WIDTH / 4) - (mFont->GetStringWidth(selectedPlayerDeckName.c_str())/2)-3, 32);
             }
             else if (deckmenu && !deckmenu->isClosed()) deckmenu->Render();
 

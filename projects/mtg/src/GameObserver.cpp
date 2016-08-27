@@ -32,7 +32,8 @@ void GameObserver::cleanup()
     SAFE_DELETE(replacementEffects);
     for (size_t i = 0; i < players.size(); ++i)
     {
-        SAFE_DELETE(players[i]);
+        if(players[i])
+            SAFE_DELETE(players[i]);
     }
     players.clear();
 
@@ -51,6 +52,8 @@ void GameObserver::cleanup()
     connectRule = false;
     actionsList.clear();
     gameTurn.clear();
+    OpenedDisplay = NULL;
+    AffinityNeedsUpdate = false;
 }
 
 GameObserver::~GameObserver()
@@ -59,7 +62,8 @@ GameObserver::~GameObserver()
 
     for (size_t i = 0; i < players.size(); ++i)
     {
-        players[i]->End();
+        if(players[i])
+            players[i]->End();
     }
     SAFE_DELETE(targetChooser);
     SAFE_DELETE(mLayers);
@@ -67,7 +71,8 @@ GameObserver::~GameObserver()
     SAFE_DELETE(replacementEffects);
     for (size_t i = 0; i < players.size(); ++i)
     {
-        SAFE_DELETE(players[i]);
+        if(players[i])
+            SAFE_DELETE(players[i]);
     }
     players.clear();
     delete[] ExtraRules;
@@ -93,6 +98,8 @@ GameObserver::GameObserver(WResourceManager *output, JGE* input)
     targetChooser = NULL;
     cardWaitingForTargets = NULL;
     mExtraPayment = NULL;
+    OpenedDisplay = NULL;
+    guiOpenDisplay = NULL;
     gameOver = NULL;
     phaseRing = NULL;
     replacementEffects = NEW ReplacementEffects();
@@ -165,18 +172,18 @@ void GameObserver::nextGamePhase()
 {
     Phase * cPhaseOld = phaseRing->getCurrentPhase();
     if (cPhaseOld->id == MTG_PHASE_COMBATDAMAGE)
-    	if ((FIRST_STRIKE == combatStep) || (END_FIRST_STRIKE == combatStep) || (DAMAGE == combatStep))
-    	{
-        	nextCombatStep();
-        	return;
-    	}
+        if ((FIRST_STRIKE == combatStep) || (END_FIRST_STRIKE == combatStep) || (DAMAGE == combatStep))
+        {
+            nextCombatStep();
+            return;
+        }
 
     if (cPhaseOld->id == MTG_PHASE_COMBATBLOCKERS)
-    	if (BLOCKERS == combatStep || TRIGGERS == combatStep)
-    	{
-        	nextCombatStep();
-        	return;
-    	}
+        if (BLOCKERS == combatStep || TRIGGERS == combatStep)
+        {
+            nextCombatStep();
+            return;
+        }
 
     phaseRing->forward();
 
@@ -191,21 +198,25 @@ void GameObserver::nextGamePhase()
     mCurrentGamePhase = cPhase->id;
 
     if (MTG_PHASE_COMBATDAMAGE == mCurrentGamePhase)
-    	nextCombatStep();
+        nextCombatStep();
     if (MTG_PHASE_COMBATEND == mCurrentGamePhase)
         combatStep = BLOCKERS;
 
     //if (currentPlayer != cPhase->player)
-    //	nextPlayer();//depreciated; we call this at EOT step now. unsure what the purpose of this was originally.fix for a bug?
+    //    nextPlayer();//depreciated; we call this at EOT step now. unsure what the purpose of this was originally.fix for a bug?
 
     //init begin of turn
     if (mCurrentGamePhase == MTG_PHASE_BEFORE_BEGIN)
     {
         cleanupPhase();
         currentPlayer->damageCount = 0;
+        currentPlayer->nonCombatDamage = 0;
         currentPlayer->drawCounter = 0;
+        currentPlayer->raidcount = 0;
+        currentPlayer->opponent()->raidcount = 0;
         currentPlayer->prowledTypes.clear();
         currentPlayer->opponent()->damageCount = 0; //added to clear odcount
+        currentPlayer->opponent()->nonCombatDamage = 0;
         currentPlayer->preventable = 0;
         mLayers->actionLayer()->cleanGarbage(); //clean abilities history for this turn;
         mLayers->stackLayer()->garbageCollect(); //clean stack history for this turn;
@@ -223,8 +234,12 @@ void GameObserver::nextGamePhase()
 
     if (mCurrentGamePhase == MTG_PHASE_AFTER_EOT)
     {
+        int handmodified = 0;
+        handmodified = currentPlayer->handsize+currentPlayer->handmodifier;
         //Auto Hand cleaning, in case the player didn't do it himself
-		while (currentPlayer->game->hand->nb_cards > currentPlayer->handsize && currentPlayer->nomaxhandsize == false)
+        if(handmodified < 0)
+            handmodified = 0;
+        while (currentPlayer->game->hand->nb_cards > handmodified && currentPlayer->nomaxhandsize == false)
         {
             WEvent * e = NEW WEventCardDiscard(currentPlayer->game->hand->cards[0]);
             receiveEvent(e);
@@ -235,6 +250,8 @@ void GameObserver::nextGamePhase()
         currentPlayer->prowledTypes.clear();
         currentPlayer->lifeLostThisTurn = 0;
         currentPlayer->opponent()->lifeLostThisTurn = 0;
+        currentPlayer->lifeGainedThisTurn = 0;
+        currentPlayer->opponent()->lifeGainedThisTurn = 0;
         currentPlayer->doesntEmpty->remove(currentPlayer->doesntEmpty);
         currentPlayer->opponent()->doesntEmpty->remove(currentPlayer->opponent()->doesntEmpty);
         nextPlayer();
@@ -306,24 +323,28 @@ void GameObserver::userRequestNextGamePhase(bool allowInterrupt, bool log)
             cardClick(getCurrentTargetChooser()->source, 0, false);
     }
     if (allowInterrupt && mLayers->stackLayer()->getNext(NULL, 0, NOT_RESOLVED))
-    	return;
+        return;
     if (getCurrentTargetChooser())
-    	return;
+        return;
     //if (mLayers->actionLayer()->isWaitingForAnswer())
-    //	return;
+    //    return;
     // Wil 12/5/10: additional check, not quite understanding why TargetChooser doesn't seem active at this point.
     // If we deem that an extra cost payment needs to be made, don't allow the next game phase to proceed.
     // Here's what I find weird - if the extra cost is something like a sacrifice, doesn't that imply a TargetChooser?
     if (WaitForExtraPayment(NULL)) 
-    	return;
-
+        return;
+    /*if (OpenedDisplay)//dont let us fly through all the phases with grave and library box still open.
+    {
+        return;//I want this here, but it locks up on opponents turn, we need to come up with a clever way to close opened
+        //displays, it makes no sense that you travel through 4 or 5 phases with library or grave still open.
+    }*/
     Phase * cPhaseOld = phaseRing->getCurrentPhase();
     if (allowInterrupt && ((cPhaseOld->id == MTG_PHASE_COMBATBLOCKERS && combatStep == ORDER)
         || (cPhaseOld->id == MTG_PHASE_COMBATBLOCKERS && combatStep == TRIGGERS)
         || (cPhaseOld->id == MTG_PHASE_COMBATDAMAGE)
         || opponent()->isAI() 
         || options[Options::optionInterrupt(mCurrentGamePhase)].number
-		|| currentPlayer->offerInterruptOnPhase - 1 == mCurrentGamePhase
+        || currentPlayer->offerInterruptOnPhase - 1 == mCurrentGamePhase
     ))
     {
         mLayers->stackLayer()->AddNextGamePhase();
@@ -516,12 +537,13 @@ bool GameObserver::operator==(const GameObserver& aGame)
         {
             error++;
         }
-        MTGGameZone * aZones[] = { p->game->graveyard, p->game->library, p->game->hand, p->game->inPlay };
+        MTGGameZone * aZones[] = { p->game->graveyard, p->game->library, p->game->hand, p->game->inPlay, p->game->exile };
         MTGGameZone * thisZones[] = { players[i]->game->graveyard,
                                          players[i]->game->library,
                                          players[i]->game->hand,
-                                         players[i]->game->inPlay };
-        for (int j = 0; j < 4; j++)
+                                         players[i]->game->inPlay,
+                                         players[i]->game->exile };
+        for (int j = 0; j < 5; j++)
         {
             MTGGameZone * zone = aZones[j];
             if (zone->nb_cards != thisZones[j]->nb_cards)
@@ -570,7 +592,7 @@ void GameObserver::Update(float dt)
     }
     currentActionPlayer = player;
     if (isInterrupting) 
-    	player = isInterrupting;
+        player = isInterrupting;
     if(mLayers)
     {
         mLayers->Update(dt, player);
@@ -590,6 +612,72 @@ void GameObserver::gameStateBasedEffects()
 {
     if(getCurrentTargetChooser() && int(getCurrentTargetChooser()->getNbTargets()) == getCurrentTargetChooser()->maxtargets)
         getCurrentTargetChooser()->done = true;
+    /////////////////////////////////////
+    for (int d = 0; d < 2; d++)
+    {
+        ////check snow count
+        if (players[d]->snowManaC > players[d]->getManaPool()->getCost(0) + players[d]->getManaPool()->getCost(6))
+            players[d]->snowManaC = players[d]->getManaPool()->getCost(0) + players[d]->getManaPool()->getCost(6);
+        if (players[d]->snowManaC < 0)
+            players[d]->snowManaC = 0;
+        if (players[d]->snowManaG > players[d]->getManaPool()->getCost(1))
+            players[d]->snowManaG = players[d]->getManaPool()->getCost(1);
+        if (players[d]->snowManaG < 0)
+            players[d]->snowManaG = 0;
+        if (players[d]->snowManaU > players[d]->getManaPool()->getCost(2))
+            players[d]->snowManaU = players[d]->getManaPool()->getCost(2);
+        if (players[d]->snowManaU < 0)
+            players[d]->snowManaU = 0;
+        if (players[d]->snowManaR > players[d]->getManaPool()->getCost(3))
+            players[d]->snowManaR = players[d]->getManaPool()->getCost(3);
+        if (players[d]->snowManaR < 0)
+            players[d]->snowManaR = 0;
+        if (players[d]->snowManaB > players[d]->getManaPool()->getCost(4))
+            players[d]->snowManaB = players[d]->getManaPool()->getCost(4);
+        if (players[d]->snowManaB < 0)
+            players[d]->snowManaB = 0;
+        if (players[d]->snowManaW > players[d]->getManaPool()->getCost(5))
+            players[d]->snowManaW = players[d]->getManaPool()->getCost(5);
+        if (players[d]->snowManaW < 0)
+            players[d]->snowManaW = 0;
+
+        MTGGameZone * dzones[] = { players[d]->game->inPlay, players[d]->game->graveyard, players[d]->game->hand, players[d]->game->library, players[d]->game->exile };
+        for (int k = 0; k < 5; k++)
+        {
+            MTGGameZone * zone = dzones[k];
+            if (mLayers->stackLayer()->count(0, NOT_RESOLVED) == 0)
+            {
+                for (int c = zone->nb_cards - 1; c >= 0; c--)
+                {
+                    zone->cards[c]->cardistargetted = 0;
+                    zone->cards[c]->cardistargetter = 0;
+                }
+            }
+
+            ///while checking all these zones, lets also strip devoid cards of thier colors
+            for (int w = 0; w < zone->nb_cards; w++)
+            {
+                MTGCardInstance * card = zone->cards[w];
+                for (int i = Constants::MTG_COLOR_GREEN; i <= Constants::MTG_COLOR_WHITE; ++i)
+                {
+                    if (card->has(Constants::DEVOID))
+                    {
+                        card->removeColor(i);
+                    }
+                }
+                //reset alternate paid
+                if(card && (isInGrave(card)||isInHand(card)||isInExile(card)))
+                {
+                    for (int i = 0; i < ManaCost::MANA_PAID_WITH_BESTOW +1; i++)
+                        card->alternateCostPaid[i] = 0;
+                }
+            }
+
+
+        }//check for losers if its GAMEOVER clear the stack to allow gamestateeffects to continue
+        players[d]->DeadLifeState();
+    }
+    ////////////////////////////////////
 
     if (mLayers->stackLayer()->count(0, NOT_RESOLVED) != 0)
         return;
@@ -608,6 +696,10 @@ void GameObserver::gameStateBasedEffects()
         for (int j = zone->nb_cards - 1; j >= 0; j--)
         {
             MTGCardInstance * card = zone->cards[j];
+            card->entersBattlefield = 0;
+            card->LKIpower = card->power;
+            card->LKItoughness = card->toughness;
+            card->LKIbasicAbilities = card->basicAbilities;
             card->afterDamage();
             card->mPropertiesChangedSinceLastUpdate = false;
             if(card->hasType(Subtypes::TYPE_PLANESWALKER) && (!card->counters||!card->counters->hasCounter("loyalty",0,0)))
@@ -617,12 +709,113 @@ void GameObserver::gameStateBasedEffects()
                 card->myPair->myPair = NULL;
                 card->myPair = NULL;
             }
+            ///set basic land mana objects canproduce
+            for (size_t gg = 0; gg < mLayers->actionLayer()->manaObjects.size(); gg++)
+            {
+                if (dynamic_cast<AManaProducer*> (((MTGAbility *) mLayers->actionLayer()->manaObjects[gg])) && 
+                    (dynamic_cast<AManaProducer*> (((MTGAbility *) mLayers->actionLayer()->manaObjects[gg])))->source->isLand() && 
+                    (dynamic_cast<AManaProducer*> (((MTGAbility *) mLayers->actionLayer()->manaObjects[gg])))->source == card)
+                {
+                    if (card->hasType("forest") && (dynamic_cast<AManaProducer*> (((MTGAbility *) mLayers->actionLayer()->manaObjects[gg])))->output->hasColor(Constants::MTG_COLOR_GREEN))
+                        card->canproduceG = 1;
+                    if (card->hasType("island") && (dynamic_cast<AManaProducer*> (((MTGAbility *) mLayers->actionLayer()->manaObjects[gg])))->output->hasColor(Constants::MTG_COLOR_BLUE))
+                        card->canproduceU = 1;
+                    if (card->hasType("mountain") && (dynamic_cast<AManaProducer*> (((MTGAbility *) mLayers->actionLayer()->manaObjects[gg])))->output->hasColor(Constants::MTG_COLOR_RED))
+                        card->canproduceR = 1;
+                    if (card->hasType("swamp") && (dynamic_cast<AManaProducer*> (((MTGAbility *) mLayers->actionLayer()->manaObjects[gg])))->output->hasColor(Constants::MTG_COLOR_BLACK))
+                        card->canproduceB = 1;
+                    if (card->hasType("plains") && (dynamic_cast<AManaProducer*> (((MTGAbility *) mLayers->actionLayer()->manaObjects[gg])))->output->hasColor(Constants::MTG_COLOR_WHITE))
+                        card->canproduceW = 1;
+                }
+            }
+            ///clear imprints
+            if(isInPlay(card) && card->imprintedCards.size())
+            {
+                for(size_t ic = 0; ic < card->imprintedCards.size(); ic++)
+                {
+                    if(!isInExile(card->imprintedCards[ic])) 
+                    {
+                        card->imprintG = 0;
+                        card->imprintU = 0;
+                        card->imprintR = 0;
+                        card->imprintB = 0;
+                        card->imprintW = 0;
+                        card->currentimprintName = "";
+                        card->imprintedNames.clear();
+                        card->imprintedCards.erase(card->imprintedCards.begin() + ic);
+                    }
+                }
+            }
+            card->bypassTC = false; //turn off bypass
+            ///////////////////////////
+            //reset extracost shadows//
+            ///////////////////////////
+            card->isExtraCostTarget = false;
+            if (mExtraPayment != NULL)
+            {
+                for (unsigned int ec = 0; ec < mExtraPayment->costs.size(); ec++)
+                {
+
+                    if (mExtraPayment->costs[ec]->tc)
+                    {
+                        vector<Targetable*>targetlist = mExtraPayment->costs[ec]->tc->getTargetsFrom();
+                        for (vector<Targetable*>::iterator it = targetlist.begin(); it != targetlist.end(); it++)
+                        {
+                            Targetable * cardMasked = *it;
+                            dynamic_cast<MTGCardInstance*>(cardMasked)->isExtraCostTarget = true;
+                        }
+
+                    }
+                }
+            }
+            ////////////////////////////////////////////////////
+            //Unattach Equipments that dont have valid targets//
+            ////////////////////////////////////////////////////
+            if ((card->target) && card->hasType(Subtypes::TYPE_EQUIPMENT))
+            {
+                if(card->target && isInPlay(card->target) && (card->target)->protectedAgainst(card))//protection from quality
+                {
+                    for (size_t i = 1; i < mLayers->actionLayer()->mObjects.size(); i++)
+                    {
+                        MTGAbility * a = ((MTGAbility *) mLayers->actionLayer()->mObjects[i]);
+                        AEquip * eq = dynamic_cast<AEquip*> (a);
+                        if (eq && eq->source == card)
+                        {
+                            ((AEquip*)a)->unequip();
+                        }
+                    }
+                }
+            }
+
             ///////////////////////////////////////////////////////
             //Remove auras that don't have a valid target anymore//
             ///////////////////////////////////////////////////////
+            if (card->target && !isInPlay(card->target) && card->isBestowed && card->hasType("aura"))
+            {
+                card->removeType("aura");
+                card->addType("creature");
+                card->target = NULL;
+                card->isBestowed = false;
+            }
+
             if ((card->target||card->playerTarget) && !card->hasType(Subtypes::TYPE_EQUIPMENT))
             {
                 if(card->target && !isInPlay(card->target))
+                players[i]->game->putInGraveyard(card);
+                /*if(card->target && isInPlay(card->target))
+                {//what exactly does this section do?
+                    if(card->spellTargetType.find("creature") != string::npos && !card->target->hasType("creature"))
+                        players[i]->game->putInGraveyard(card);
+                    if(card->spellTargetType.find("artifact") != string::npos && !card->target->hasType("artifact"))
+                        players[i]->game->putInGraveyard(card);
+                    if(card->spellTargetType.find("enchantment") != string::npos && !card->target->hasType("enchantment"))
+                        players[i]->game->putInGraveyard(card);
+                    if(card->spellTargetType.find("land") != string::npos && !card->target->hasType("land"))
+                        players[i]->game->putInGraveyard(card);
+                    if(card->spellTargetType.find("planeswalker") != string::npos && !card->target->hasType("planeswalker"))
+                        players[i]->game->putInGraveyard(card);
+                }*/
+                if(card->target && isInPlay(card->target) && (card->target)->protectedAgainst(card) && !card->has(Constants::AURAWARD))//protection from quality except aura cards like flickering ward
                 players[i]->game->putInGraveyard(card);
             }
             card->enchanted = false;
@@ -634,18 +827,7 @@ void GameObserver::gameStateBasedEffects()
             {
                 card->playerTarget->curses.push_back(card);
             }
-            ///////////////////////////
-            //reset extracost shadows//
-            ///////////////////////////
-            card->isExtraCostTarget = false;
-            if(mExtraPayment != NULL)
-            {
-                for(unsigned int ec = 0;ec < mExtraPayment->costs.size();ec++)
-                {
-                    if( mExtraPayment->costs[ec]->target)
-                        mExtraPayment->costs[ec]->target->isExtraCostTarget = true;
-                }
-            }
+
             //////////////////////
             //reset morph hiding//
             //////////////////////
@@ -691,6 +873,12 @@ void GameObserver::gameStateBasedEffects()
             {
                 card->graveEffects = false;
                 card->exileEffects = false;
+
+                if(card->isCreature())
+                {
+                    if(card->life < 1 && !card->has(Constants::INDESTRUCTIBLE))
+                        card->destroy();//manor gargoyle... recheck
+                }
             }
 
             if(card->childrenCards.size())
@@ -727,34 +915,7 @@ void GameObserver::gameStateBasedEffects()
         ///////////////////////////////////////////////////////////
         //life checks/poison checks also checks cant win or lose.//
         ///////////////////////////////////////////////////////////
-        if (players[i]->life <= 0 || players[i]->poisonCount >= 10)
-        {
-            int cantlosers = 0;
-            MTGGameZone * z = players[i]->game->inPlay;
-            int nbcards = z->nb_cards;
-            for (int j = 0; j < nbcards; ++j)
-            {
-                MTGCardInstance * c = z->cards[j];
-                if (c->has(Constants::CANTLOSE) || (c->has(Constants::CANTLIFELOSE) && players[i]->poisonCount < 10))
-                {
-                    cantlosers++;
-                }
-            }
-            MTGGameZone * k = players[i]->opponent()->game->inPlay;
-            int onbcards = k->nb_cards;
-            for (int m = 0; m < onbcards; ++m)
-            {
-                MTGCardInstance * e = k->cards[m];
-                if (e->has(Constants::CANTWIN))
-                {
-                    cantlosers++;
-                }
-            }
-            if (cantlosers < 1)
-            {
-                setLoser(players[i]);
-            }
-        }
+        players[i]->DeadLifeState(true);//refactored
     }
     //////////////////////////////////////////////////////
     //-------------card based states effects------------//
@@ -817,6 +978,7 @@ void GameObserver::gameStateBasedEffects()
 
                     }
                 }
+
                 if(nbcards > z->nb_cards)
                 {
                     t = 0;
@@ -841,6 +1003,7 @@ void GameObserver::gameStateBasedEffects()
         enchantmentStatus();
         /////////////////////////////
         // Check affinity on a card//
+        //    plus modify costs    //
         /////////////////////////////
         Affinity();
         /////////////////////////////////////
@@ -870,13 +1033,12 @@ void GameObserver::gameStateBasedEffects()
     //Auto skip Phases
     int skipLevel = (currentPlayer->playMode == Player::MODE_TEST_SUITE || mLoading) ? Constants::ASKIP_NONE
         : options[Options::ASPHASES].number;
-    int nrCreatures = currentPlayer->game->inPlay->hasType("creature")?1:0;
 
     if (skipLevel == Constants::ASKIP_SAFE || skipLevel == Constants::ASKIP_FULL)
     {
         if ((opponent()->isAI() && !(isInterrupting)) && ((mCurrentGamePhase == MTG_PHASE_UNTAP)
             || (mCurrentGamePhase == MTG_PHASE_DRAW) || (mCurrentGamePhase == MTG_PHASE_COMBATBEGIN)
-            || ((mCurrentGamePhase == MTG_PHASE_COMBATATTACKERS) && (nrCreatures == 0))
+            || ((mCurrentGamePhase == MTG_PHASE_COMBATATTACKERS) && (currentPlayer->noPossibleAttackers()))
             || mCurrentGamePhase == MTG_PHASE_COMBATEND || mCurrentGamePhase == MTG_PHASE_ENDOFTURN
             || ((mCurrentGamePhase == MTG_PHASE_CLEANUP) && (currentPlayer->game->hand->nb_cards < 8))))
             userRequestNextGamePhase();
@@ -917,153 +1079,163 @@ void GameObserver::enchantmentStatus()
 
 void GameObserver::Affinity()
 {
-    for (int i = 0; i < 2; i++)
+    for (int dd = 0; dd < 2; dd++)
     {
-        MTGGameZone * zone = players[i]->game->hand;
-        for (int k = zone->nb_cards - 1; k >= 0; k--)
-        {
-            MTGCardInstance * card = zone->cards[k];
-            if (!card)
-                continue;
+        MTGGameZone * dzones[] = { players[dd]->game->graveyard, players[dd]->game->hand, players[dd]->game->library, players[dd]->game->exile };
+        for (int kk = 0; kk < 4; kk++)
+        { 
+            MTGGameZone * zone = dzones[kk];
+            for (int cc = zone->nb_cards - 1; cc >= 0; cc--)
+            {//start
+                MTGCardInstance * card = zone->cards[cc];
+                if (!card)
+                    continue;
 
-            int color = 0;
-            string type = "";
-            //only do any of the following if a card with the stated ability is in your hand.
-            ManaCost * original = NEW ManaCost();
-            original->copy(card->model->data->getManaCost());
-            //have to run alter cost before affinity or the 2 cancel each other out.
-            if(card->getIncreasedManaCost()->getConvertedCost()||card->getReducedManaCost()->getConvertedCost())
-            {
-                if(card->getIncreasedManaCost()->getConvertedCost())
-                    original->add(card->getIncreasedManaCost());
-                if(card->getReducedManaCost()->getConvertedCost())
-                    original->remove(card->getReducedManaCost());
-                card->getManaCost()->copy(original);
-                if(card->getManaCost()->extraCosts)
+                ///////////////////////////
+                //reset extracost shadows//
+                ///////////////////////////
+                card->isExtraCostTarget = false;
+                if (mExtraPayment != NULL)
                 {
-                    for(unsigned int i = 0; i < card->getManaCost()->extraCosts->costs.size();i++)
+                    for (unsigned int ec = 0; ec < mExtraPayment->costs.size(); ec++)
                     {
-                        card->getManaCost()->extraCosts->costs[i]->setSource(card);
+
+                        if (mExtraPayment->costs[ec]->tc)
+                        {
+                            vector<Targetable*>targetlist = mExtraPayment->costs[ec]->tc->getTargetsFrom();
+                            for (vector<Targetable*>::iterator it = targetlist.begin(); it != targetlist.end(); it++)
+                            {
+                                Targetable * cardMasked = *it;
+                                dynamic_cast<MTGCardInstance*>(cardMasked)->isExtraCostTarget = true;
+                            }
+
+                        }
                     }
                 }
-            }
-            int reducem = 0;
-            bool resetCost = false;
-            for(unsigned int na = 0; na < card->cardsAbilities.size();na++)
-            {
-                ANewAffinity * newAff = dynamic_cast<ANewAffinity*>(card->cardsAbilities[na]);
-                if(newAff)
+                ///we handle trisnisphere seperately because its a desaster.
+                if(card->getManaCost())//make sure we check, abiliy$!/token dont have a mancost object.
                 {
-                    if(!resetCost)
+                    if (card->has(Constants::TRINISPHERE))
                     {
-                        resetCost = true;
-                        card->getManaCost()->copy(original);
-                        if(card->getManaCost()->extraCosts)
+                        for (int jj = card->getManaCost()->getConvertedCost(); jj < 3; jj++)
                         {
-                            for(unsigned int i = 0; i < card->getManaCost()->extraCosts->costs.size();i++)
-                            {
-                                card->getManaCost()->extraCosts->costs[i]->setSource(card);
-                            }
+                            card->getManaCost()->add(Constants::MTG_COLOR_ARTIFACT, 1);
+                            card->countTrini++;
                         }
-                    }
-                    TargetChooserFactory tf(this);
-                    TargetChooser * tcn = tf.createTargetChooser(newAff->tcString,card,NULL);
-
-                    for (int w = 0; w < 2; ++w)
-                    {
-                        Player *p = this->players[w];
-                        MTGGameZone * zones[] = { p->game->inPlay, p->game->graveyard, p->game->hand, p->game->library, p->game->stack, p->game->exile };
-                        for (int k = 0; k < 6; k++)
-                        {
-                            MTGGameZone * z = zones[k];
-                            if (tcn->targetsZone(z))
-                            {
-                                reducem += z->countByCanTarget(tcn);
-                            }
-                        }
-                    }
-                    SAFE_DELETE(tcn);
-                    ManaCost * removingCost = ManaCost::parseManaCost(newAff->manaString);
-                    for(int j = 0; j < reducem; j++)
-                        card->getManaCost()->remove(removingCost);
-                    SAFE_DELETE(removingCost);
-                }
-            }
-            if(card->has(Constants::AFFINITYARTIFACTS)||
-                card->has(Constants::AFFINITYFOREST)||
-                card->has(Constants::AFFINITYGREENCREATURES)||
-                card->has(Constants::AFFINITYISLAND)||
-                card->has(Constants::AFFINITYMOUNTAIN)||
-                card->has(Constants::AFFINITYPLAINS)||
-                card->has(Constants::AFFINITYSWAMP)){
-                    if (card->has(Constants::AFFINITYARTIFACTS))
-                    {
-                        type = "artifact";
-                    }
-                    else if (card->has(Constants::AFFINITYSWAMP))
-                    {
-                        type = "swamp";
-                    }
-                    else if (card->has(Constants::AFFINITYMOUNTAIN))
-                    {
-                        type = "mountain";
-                    }
-                    else if (card->has(Constants::AFFINITYPLAINS))
-                    {
-                        type = "plains";
-                    }
-                    else if (card->has(Constants::AFFINITYISLAND))
-                    {
-                        type = "island";
-                    }
-                    else if (card->has(Constants::AFFINITYFOREST))
-                    {
-                        type = "forest";
-                    }
-                    else if (card->has(Constants::AFFINITYGREENCREATURES))
-                    {
-                        color = 1;
-                        type = "creature";
-                    }
-                    card->getManaCost()->copy(original);
-                    if(card->getManaCost()->extraCosts)
-                    {
-                        for(unsigned int i = 0; i < card->getManaCost()->extraCosts->costs.size();i++)
-                        {
-                            card->getManaCost()->extraCosts->costs[i]->setSource(card);
-                        }
-                    }
-                    int reduce = 0;
-                    if(card->has(Constants::AFFINITYGREENCREATURES))
-                    {
-                        TargetChooserFactory tf(this);
-                        TargetChooser * tc = tf.createTargetChooser("creature[green]",NULL);
-                        reduce = card->controller()->game->battlefield->countByCanTarget(tc);
-                        SAFE_DELETE(tc);
                     }
                     else
                     {
-                        reduce = card->controller()->game->battlefield->countByType(type);
+                        if (card->countTrini)
+                        {
+                            card->getManaCost()->remove(Constants::MTG_COLOR_ARTIFACT, card->countTrini);
+                            card->countTrini = 0;
+                        }
                     }
-                    for(int i = 0; i < reduce;i++)
+                }
+                ///////////////////////
+                bool NewAffinityFound = false;
+                for (unsigned int na = 0; na < card->cardsAbilities.size(); na++)
+                {
+                    if (!card->cardsAbilities[na])
+                        break;
+                    ANewAffinity * newAff = dynamic_cast<ANewAffinity*>(card->cardsAbilities[na]);
+                    if (newAff)
                     {
-                        if(card->getManaCost()->getCost(color) > 0)
-                            card->getManaCost()->remove(color,1);
+                        NewAffinityFound = true;
                     }
+                }
+                bool DoReduceIncrease = false;
+                if (
+                    (card->has(Constants::AFFINITYARTIFACTS) ||
+                    card->has(Constants::AFFINITYFOREST) ||
+                    card->has(Constants::AFFINITYGREENCREATURES) ||
+                    card->has(Constants::AFFINITYISLAND) ||
+                    card->has(Constants::AFFINITYMOUNTAIN) ||
+                    card->has(Constants::AFFINITYPLAINS) ||
+                    card->has(Constants::AFFINITYSWAMP) ||
+                    card->has(Constants::CONDUITED) ||
+                    card->getIncreasedManaCost()->getConvertedCost() ||
+                    card->getReducedManaCost()->getConvertedCost() ||
+                    NewAffinityFound)
+                    &&
+                    AffinityNeedsUpdate
+                    )
+                    DoReduceIncrease = true;
+                if (!DoReduceIncrease)
+                    continue;
 
-            }
-            SAFE_DELETE(original);
+                //above we check if there are even any cards that effect cards manacost
+                //only do any of the following if a card with the stated ability is in your hand.
+                //kicker is an addon to normal cost, suspend is not casting. add cost as needed EXACTLY as seen below.
+                card->getManaCost()->resetCosts();
+                ManaCost *newCost = NEW ManaCost();
+                newCost->changeCostTo(card->computeNewCost(card, card->getManaCost(), card->model->data->getManaCost()));
+
+                card->getManaCost()->changeCostTo(newCost);
+                SAFE_DELETE(newCost);
+                if (card->getManaCost()->getAlternative())
+                {
+                    card->getManaCost()->getAlternative()->resetCosts();
+                    ManaCost * newCost = NEW ManaCost();
+                    newCost->changeCostTo(card->computeNewCost(card, card->getManaCost()->getAlternative(), card->model->data->getManaCost()->getAlternative()));
+                    card->getManaCost()->getAlternative()->changeCostTo(newCost);
+                    SAFE_DELETE(newCost);
+                }
+                if (card->getManaCost()->getBestow())
+                {
+                    card->getManaCost()->getBestow()->resetCosts();
+                    ManaCost * newCost = NEW ManaCost();
+                    newCost->changeCostTo(card->computeNewCost(card, card->getManaCost()->getBestow(), card->model->data->getManaCost()->getBestow()));
+                    card->getManaCost()->getBestow()->changeCostTo(newCost);
+                    SAFE_DELETE(newCost);
+                }
+                if (card->getManaCost()->getRetrace())
+                {
+                    card->getManaCost()->getRetrace()->resetCosts();
+                    ManaCost * newCost = NEW ManaCost();
+                    newCost->changeCostTo(card->computeNewCost(card, card->getManaCost()->getRetrace(), card->model->data->getManaCost()->getRetrace()));
+                    card->getManaCost()->getRetrace()->changeCostTo(newCost);
+                    SAFE_DELETE(newCost);
+                }
+                if (card->getManaCost()->getBuyback())
+                {
+                    card->getManaCost()->getBuyback()->resetCosts();
+                    ManaCost * newCost = NEW ManaCost();
+                    newCost->changeCostTo(card->computeNewCost(card, card->getManaCost()->getBuyback(), card->model->data->getManaCost()->getBuyback()));
+                    card->getManaCost()->getBuyback()->changeCostTo(newCost);
+                    SAFE_DELETE(newCost);
+                }
+                if (card->getManaCost()->getFlashback())
+                {
+                    card->getManaCost()->getFlashback()->resetCosts();
+                    ManaCost * newCost = NEW ManaCost();
+                    newCost->changeCostTo(card->computeNewCost(card, card->getManaCost()->getFlashback(), card->model->data->getManaCost()->getFlashback()));
+                    card->getManaCost()->getFlashback()->changeCostTo(newCost);
+                    SAFE_DELETE(newCost);
+                }
+                if (card->getManaCost()->getMorph())
+                {
+                    card->getManaCost()->getMorph()->resetCosts();
+                    ManaCost * newCost = NEW ManaCost();
+                    newCost->changeCostTo(card->computeNewCost(card, card->getManaCost()->getMorph(), card->model->data->getManaCost()->getMorph()));
+                    card->getManaCost()->getMorph()->changeCostTo(newCost);
+                    SAFE_DELETE(newCost);
+                }
+
+            }//end
         }
     }
+    AffinityNeedsUpdate = false;
 }
+
 void GameObserver::Render()
 {
     if(mLayers)
         mLayers->Render();
     if (targetChooser || (mLayers && mLayers->actionLayer()->isWaitingForAnswer()))
-	    JRenderer::GetInstance()->DrawRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ARGB(255,255,0,0));
+        JRenderer::GetInstance()->DrawRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ARGB(255,255,0,0));
     if (mExtraPayment) 
-    	mExtraPayment->Render();
+        mExtraPayment->Render();
     
     for (size_t i = 0; i < players.size(); ++i)
     {
@@ -1098,6 +1270,8 @@ void GameObserver::ButtonPressed(PlayGuiObject * target)
     }
     else if (GuiGraveyard* graveyard = dynamic_cast<GuiGraveyard*>(target))
         graveyard->toggleDisplay();
+    else if (GuiExile* exile = dynamic_cast<GuiExile*>(target))
+        exile->toggleDisplay();
     //opponenthand
     else if (GuiOpponentHand* opponentHand = dynamic_cast<GuiOpponentHand*>(target))
         if (opponentHand->showCards)
@@ -1145,7 +1319,7 @@ void GameObserver::stackObjectClicked(Interruptible * action)
     {
         int reaction = mLayers->actionLayer()->isReactingToTargetClick(action);
         if (reaction == -1) 
-        	mLayers->actionLayer()->reactToTargetClick(action);
+            mLayers->actionLayer()->reactToTargetClick(action);
     }
 }
 
@@ -1219,12 +1393,13 @@ int GameObserver::cardClick(MTGCardInstance * card, Targetable * object, bool lo
 {
     Player * clickedPlayer = NULL;
     int toReturn = 0;
+    int handmodified = 0;
     MTGGameZone* zone = NULL;
     size_t index = 0;
     MTGCardInstance* backup = NULL;
 
     if (!card) {
-    	clickedPlayer = ((Player *) object);
+        clickedPlayer = ((Player *) object);
     } else {
         backup = card;
         zone = card->currentZone;
@@ -1245,6 +1420,7 @@ int GameObserver::cardClick(MTGCardInstance * card, Targetable * object, bool lo
                     int _result = targetChooser->ForceTargetListReady();
                     if(targetChooser->targetMin && int(targetChooser->getNbTargets()) < targetChooser->maxtargets)
                         _result = 0;
+
                     if (_result)
                     {
                         result = TARGET_OK_FULL;
@@ -1336,8 +1512,11 @@ int GameObserver::cardClick(MTGCardInstance * card, Targetable * object, bool lo
         }
 
         //Current player's hand
+        handmodified = currentPlayer->handsize+currentPlayer->handmodifier;
+        if(handmodified < 0)
+            handmodified = 0;
         if (currentPlayer->game->hand->hasCard(card) && mCurrentGamePhase == MTG_PHASE_CLEANUP
-                    && currentPlayer->game->hand->nb_cards > currentPlayer->handsize && currentPlayer->nomaxhandsize == false)
+                    && currentPlayer->game->hand->nb_cards > handmodified && currentPlayer->nomaxhandsize == false)
         {
             WEvent * e = NEW WEventCardDiscard(currentPlayer->game->hand->cards[0]);
             receiveEvent(e);
@@ -1375,9 +1554,9 @@ int GameObserver::untap(MTGCardInstance * card)
         return 0;
     }
     if (card->has(Constants::DOESNOTUNTAP))
-    	return 0;
+        return 0;
     if (card->frozen > 0) 
-    	return 0;
+        return 0;
     card->attemptUntap();
     return 1;
 }
@@ -1399,7 +1578,7 @@ int GameObserver::isInPlay(MTGCardInstance * card)
     for (int i = 0; i < 2; i++)
     {
         if (players[i]->game->isInPlay(card)) 
-        	return 1;
+            return 1;
     }
     return 0;
 }
@@ -1425,7 +1604,17 @@ int GameObserver::isInExile(MTGCardInstance * card)
     }
     return 0;
 }
+int GameObserver::isInHand(MTGCardInstance * card)
+{
 
+    for (int i = 0; i < 2; i++)
+    {
+        MTGGameZone * hand = players[i]->game->hand;
+        if (players[i]->game->isInZone(card, hand))
+            return 1;
+    }
+    return 0;
+}
 void GameObserver::cleanupPhase()
 {
     currentPlayer->cleanupPhase();
@@ -1440,10 +1629,10 @@ void GameObserver::untapPhase()
 int GameObserver::receiveEvent(WEvent * e)
 {
     if (!e) 
-    	return 0;
+        return 0;
     eventsQueue.push(e);
     if (eventsQueue.size() > 1) 
-    	return -1; //resolving events can generate more events
+        return -1; //resolving events can generate more events
     int result = 0;
     while (eventsQueue.size())
     {
@@ -1456,13 +1645,14 @@ int GameObserver::receiveEvent(WEvent * e)
         SAFE_DELETE(ev);
         eventsQueue.pop();
     }
+    AffinityNeedsUpdate = true;
     return result;
 }
 
 Player * GameObserver::currentlyActing()
 {
     if (isInterrupting) 
-    	return isInterrupting;
+        return isInterrupting;
     return currentActionPlayer;
 }
 
@@ -1509,7 +1699,7 @@ ostream& operator<<(ostream& out, const GameObserver& g)
         out << g.mSeed;
         out << endl;
         out << "rvalues:";
-        out << g.randomGenerator.saveUsedRandValues(out);
+        g.randomGenerator.saveUsedRandValues(out);
         out << endl;
         out << g.startupGameSerialized;
     }
@@ -1555,7 +1745,7 @@ bool GameObserver::load(const string& ss, bool undo, int controlledPlayerIndex
                         )
 {
     bool currentPlayerSet = false;
-	int state = -1;
+    int state = -1;
     string s;
     stringstream stream(ss);
 
@@ -1574,7 +1764,7 @@ bool GameObserver::load(const string& ss, bool undo, int controlledPlayerIndex
         if (s.find("seed ") == 0)
         {
             mSeed = atoi(s.substr(5).c_str());
-			randomGenerator.setSeed(mSeed);
+            randomGenerator.setSeed(mSeed);
             continue;
         }
         if (s.find("rvalues:") == 0)
@@ -1643,7 +1833,7 @@ bool GameObserver::load(const string& ss, bool undo, int controlledPlayerIndex
         case 3:
             if (s.compare("[end]") == 0)
             {
-				turn = 0;
+                turn = 0;
                 mLayers = NEW DuelLayers(this, controlledPlayerIndex);
                 currentPlayer = players[currentPlayerId];
                 phaseRing = NEW PhaseRing(this);
@@ -1732,7 +1922,7 @@ bool GameObserver::processAction(const string& s)
         DebugTrace("no clue about: " + s);
     }
 
-	return true;
+    return true;
 }
 
 bool GameObserver::processActions(bool undo
@@ -1773,7 +1963,7 @@ bool GameObserver::processActions(bool undo
 
     for(loadingite = loadingList.begin(); loadingite != loadingList.end(); loadingite++, cmdIndex++)
     {
-		processAction(*loadingite);
+        processAction(*loadingite);
 
         size_t nb = actionsList.size();
 
@@ -1839,6 +2029,13 @@ void GameObserver::Mulligan(Player* player)
     player->takeMulligan();
 }
 
+void GameObserver::serumMulligan(Player* player)
+{
+    if(!player) player = currentPlayer;
+    logAction(player, "mulligan serum powder");
+    player->serumMulligan();
+}
+
 Player* GameObserver::createPlayer(const string& playerMode
                                 #ifdef TESTSUITE
                                 , TestSuiteGame* testgame
@@ -1846,7 +2043,7 @@ Player* GameObserver::createPlayer(const string& playerMode
                                 )
 {
     Player::Mode aMode = (Player::Mode)atoi(playerMode.c_str());
-	Player* pPlayer = 0;
+    Player* pPlayer = 0;
 
     switch(aMode)
     {
@@ -1870,12 +2067,12 @@ Player* GameObserver::createPlayer(const string& playerMode
         break;
     }
 
-	if(pPlayer)
-	{
-		players.push_back(pPlayer);
-	}
+    if(pPlayer)
+    {
+        players.push_back(pPlayer);
+    }
 
-	return pPlayer;
+    return pPlayer;
 }
 
 #ifdef TESTSUITE
@@ -1921,7 +2118,7 @@ void GameObserver::loadPlayer(int playerId, PlayerType playerType, int decknb, b
 
                 loadPlayer(playerId, NEW HumanPlayer(this, deckFile, deckFileSmall, premadeDeck));
             }
-		}
+        }
         else
         { //AI Player, chooses deck
             AIPlayerFactory playerCreator;
@@ -1957,43 +2154,43 @@ void GameObserver::loadPlayer(int playerId, PlayerType playerType, int decknb, b
 
 #ifdef NETWORK_SUPPORT
 NetworkGameObserver::NetworkGameObserver(JNetwork* pNetwork, WResourceManager* output, JGE* input)
-	: GameObserver(output, input), mpNetworkSession(pNetwork), 	mSynchronized(false)
+    : GameObserver(output, input), mpNetworkSession(pNetwork),     mSynchronized(false)
 {
-	mpNetworkSession->registerCommand("loadPlayer", this, loadPlayer, ignoreResponse);
-	mpNetworkSession->registerCommand("synchronize", this, synchronize, checkSynchro);
-	mpNetworkSession->registerCommand("sendAction", this, sendAction, checkSynchro);
-	mpNetworkSession->registerCommand("disconnect", this, disconnect, ignoreResponse);
+    mpNetworkSession->registerCommand("loadPlayer", this, loadPlayer, ignoreResponse);
+    mpNetworkSession->registerCommand("synchronize", this, synchronize, checkSynchro);
+    mpNetworkSession->registerCommand("sendAction", this, sendAction, checkSynchro);
+    mpNetworkSession->registerCommand("disconnect", this, disconnect, ignoreResponse);
 }
 
 NetworkGameObserver::~NetworkGameObserver()
 {
-	mpNetworkSession->sendCommand("disconnect", "");
+    mpNetworkSession->sendCommand("disconnect", "");
 }
 
 void NetworkGameObserver::disconnect(void*pxThis, stringstream&, stringstream&)
 {
-	NetworkGameObserver* pThis = (NetworkGameObserver*)pxThis;
-	pThis->setLoser(pThis->getView()->getRenderedPlayerOpponent());
+    NetworkGameObserver* pThis = (NetworkGameObserver*)pxThis;
+    pThis->setLoser(pThis->getView()->getRenderedPlayerOpponent());
 }
 
 void NetworkGameObserver::Update(float dt)
 {
-	mpNetworkSession->Update();
-	::GameObserver::Update(dt);
+    mpNetworkSession->Update();
+    ::GameObserver::Update(dt);
 }
 
 void NetworkGameObserver::loadPlayer(int playerId, Player* player)
 {
-	GameObserver::loadPlayer(playerId, player);
-	stringstream out;
-	out << *player;
-	mpNetworkSession->sendCommand("loadPlayer", out.str());
+    GameObserver::loadPlayer(playerId, player);
+    stringstream out;
+    out << *player;
+    mpNetworkSession->sendCommand("loadPlayer", out.str());
 }
 
 void NetworkGameObserver::loadPlayer(void*pxThis, stringstream& in, stringstream&)
 {
-	NetworkGameObserver* pThis = (NetworkGameObserver*)pxThis;
-	Player* pPlayer = 0;
+    NetworkGameObserver* pThis = (NetworkGameObserver*)pxThis;
+    Player* pPlayer = 0;
     string s;
 
     while(std::getline(in, s))
@@ -2016,50 +2213,50 @@ void NetworkGameObserver::loadPlayer(void*pxThis, stringstream& in, stringstream
 
 void NetworkGameObserver::synchronize()
 {
-	if(!mSynchronized && mpNetworkSession->isServer())
-	{
-		stringstream out;
-		out << *this;
-		mpNetworkSession->sendCommand("synchronize", out.str());
-		mSynchronized = true;
-	}
+    if(!mSynchronized && mpNetworkSession->isServer())
+    {
+        stringstream out;
+        out << *this;
+        mpNetworkSession->sendCommand("synchronize", out.str());
+        mSynchronized = true;
+    }
 }
 
 void NetworkGameObserver::synchronize(void*pxThis, stringstream& in, stringstream& out)
 {
-	NetworkGameObserver* pThis = (NetworkGameObserver*)pxThis;
-	// now, we need to load the game from player 2's perspective
-	pThis->load(in.str(), false, 1);
-	out << *pThis;
+    NetworkGameObserver* pThis = (NetworkGameObserver*)pxThis;
+    // now, we need to load the game from player 2's perspective
+    pThis->load(in.str(), false, 1);
+    out << *pThis;
 }
 
 
 void NetworkGameObserver::checkSynchro(void*pxThis, stringstream& in, stringstream&)
 {
-	NetworkGameObserver* pThis = (NetworkGameObserver*)pxThis;
-	
-	GameObserver aGame;
-	aGame.mRules = pThis->mRules;
-	aGame.load(in.str());
+    NetworkGameObserver* pThis = (NetworkGameObserver*)pxThis;
+    
+    GameObserver aGame;
+    aGame.mRules = pThis->mRules;
+    aGame.load(in.str());
 
-	assert(aGame == *pThis);
+    assert(aGame == *pThis);
 }
 
 void NetworkGameObserver::sendAction(void*pxThis, stringstream& in, stringstream&)
 {
-	NetworkGameObserver* pThis = (NetworkGameObserver*)pxThis;
+    NetworkGameObserver* pThis = (NetworkGameObserver*)pxThis;
 
     pThis->mForwardAction = false;
-	pThis->processAction(in.str());
+    pThis->processAction(in.str());
     pThis->mForwardAction = true;
-	//out << *pThis;
+    //out << *pThis;
 }
 
 void NetworkGameObserver::logAction(const string& s)
 {
-	GameObserver::logAction(s);
-	if(mForwardAction)
-		mpNetworkSession->sendCommand("sendAction", s);
+    GameObserver::logAction(s);
+    if(mForwardAction)
+        mpNetworkSession->sendCommand("sendAction", s);
 }
 
 #endif

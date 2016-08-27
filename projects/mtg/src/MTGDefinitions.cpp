@@ -4,7 +4,7 @@ using std::string;
 
 #include "MTGDefinitions.h"
 
-char Constants::MTGColorChars[] = {'x','g','u','r','b','w','l'};
+char Constants::MTGColorChars[] = {'x','g','u','r','b','w','c','l'};
 vector <const char*> Constants::MTGColorStrings;
 
 const string Constants::kManaColorless      = "colorless";
@@ -13,10 +13,11 @@ const string Constants::kManaBlue           = "blue";
 const string Constants::kManaRed            = "red";
 const string Constants::kManaBlack          = "black";
 const string Constants::kManaWhite          = "white";
+const string Constants::kManaWaste          = "waste";
 
-int Constants::_r[7] = {75,	20,		20,	200,50,255,128};
-int Constants::_g[7] = {30,	140,	30,	15,	50,255,128};
-int Constants::_b[7] = {20,	0,		140,15,	50,255,128};
+int Constants::_r[7] = {75,20,20,200,50,255,128};
+int Constants::_g[7] = {30,140,30,15,50,255,128};
+int Constants::_b[7] = {20,0,140,15,50,255,128};
 
 
 const string Constants::kAlternativeKeyword = "alternative";
@@ -25,6 +26,7 @@ const string Constants::kFlashBackKeyword = "flashback";
 const string Constants::kRetraceKeyword = "retrace";
 const string Constants::kKickerKeyword = "kicker";
 const string Constants::kMorphKeyword = "facedown";
+const string Constants::kBestowKeyword = "bestow";
 
 int Constants::NB_Colors = 0; //Store the Max number of colors.
 
@@ -132,7 +134,45 @@ const char* Constants::MTGBasicAbilities[] = {
     "soulbond",
     "lure",
     "nolegend",
-    "canplayfromgraveyard"
+    "canplayfromgraveyard",
+    "tokenizer",//parallel lives,
+    "mygraveexiler",
+    "oppgraveexiler",
+    "librarydeath",
+    "shufflelibrarydeath",
+    "offering",
+    "evadebigger",
+    "spellmastery",
+    "nolifegain",
+    "nolifegainopponent",
+    "auraward",
+    "madness",
+    "protectionfromcoloredspells",
+    "mygcreatureexiler",
+    "oppgcreatureexiler",
+    "zerocast",
+    "trinisphere",
+    "canplayfromexile",
+    "libraryeater",
+    "devoid",
+    "cantchangelife",
+    "combattoughness",
+    "cantpaylife",
+    "cantbesacrified",
+    "skulk",
+    "menace",
+    "nosolo",
+    "mustblock",
+    "dethrone",
+    "overload",
+    "shackler",
+    "flyersonly",
+    "tempflashback",
+    "legendruleremove",
+    "canttransform",
+    "asflash",
+    "conduited",
+    "canblocktapped"
 };
 
 map<string,int> Constants::MTGBasicAbilitiesMap;
@@ -165,36 +205,36 @@ int Constants::GetColorStringIndex(string mtgColor)
 
 const string Constants::MTGPhaseNames[] =
 {
-	"---",
-	"Untap",
-	"Upkeep",
-	"Draw",
-	"Main phase 1",
-	"Combat begins",
-	"Attackers",
-	"Blockers",
-	"Combat damage",
-	"Combat ends",
-	"Main phase 2",
-	"End",
-	"Cleanup",
-	"---"
+    "---",
+    "Untap",
+    "Upkeep",
+    "Draw",
+    "Main phase 1",
+    "Combat begins",
+    "Attackers",
+    "Blockers",
+    "Combat damage",
+    "Combat ends",
+    "Main phase 2",
+    "End",
+    "Cleanup",
+    "---"
 };
 
 const char* Constants::MTGPhaseCodeNames[] =
 {
-	"beginofturn",
-	"untap",
-	"upkeep",
-	"draw",
-	"firstmain",
-	"combatbegins",
-	"attackers",
-	"blockers",
-	"combatdamage",
-	"combatends",
-	"secondmain",
-	"end",
-	"cleanup",
-	"beforenextturn"
+    "beginofturn",
+    "untap",
+    "upkeep",
+    "draw",
+    "firstmain",
+    "combatbegins",
+    "attackers",
+    "blockers",
+    "combatdamage",
+    "combatends",
+    "secondmain",
+    "end",
+    "cleanup",
+    "beforenextturn"
 };

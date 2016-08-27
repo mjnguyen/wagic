@@ -127,6 +127,7 @@ struct WEventCardChangeType : public WEventCardUpdate {
 struct WEventCardTap : public WEventCardUpdate {
   bool before;
   bool after;
+  bool noTrigger;
   WEventCardTap(MTGCardInstance * card, bool before, bool after);
   virtual Targetable * getTarget(int target);
 };
@@ -151,33 +152,33 @@ struct WEventCreatureAttacker : public WEventCardUpdate {
 //event when card attacks.
 struct WEventCardAttacked : public WEventCardUpdate {
   WEventCardAttacked(MTGCardInstance * card);
-	virtual Targetable * getTarget(int target);
+    virtual Targetable * getTarget(int target);
 };
 
 //event when card attacks alone.
 struct WEventCardAttackedAlone : public WEventCardUpdate {
   WEventCardAttackedAlone(MTGCardInstance * card);
-	virtual Targetable * getTarget(int target);
+    virtual Targetable * getTarget(int target);
 };
 
 //event when card attacks but is not blocked.
 struct WEventCardAttackedNotBlocked : public WEventCardUpdate {
   WEventCardAttackedNotBlocked(MTGCardInstance * card);
-	virtual Targetable * getTarget(int target);
+    virtual Targetable * getTarget(int target);
 };
 
 //event when card attacks but is blocked.
 struct WEventCardAttackedBlocked : public WEventCardUpdate {
   WEventCardAttackedBlocked(MTGCardInstance * card,MTGCardInstance * opponent);
   MTGCardInstance * opponent;
-	virtual Targetable * getTarget(int target);
+    virtual Targetable * getTarget(int target);
 };
 
 //event when card blocked.
 struct WEventCardBlocked : public WEventCardUpdate {
   WEventCardBlocked(MTGCardInstance * card,MTGCardInstance * opponent);
   MTGCardInstance * opponent;
-	virtual Targetable * getTarget(int target);
+    virtual Targetable * getTarget(int target);
 };
 
 //event when card is sacrificed.
@@ -190,13 +191,13 @@ struct WEventCardSacrifice : public WEventCardUpdate {
 //event when card is discarded.
 struct WEventCardDiscard : public WEventCardUpdate {
   WEventCardDiscard(MTGCardInstance * card);
-	virtual Targetable * getTarget(int target);
+    virtual Targetable * getTarget(int target);
 };
 
 //event when card is cycled.
 struct WEventCardCycle : public WEventCardUpdate {
   WEventCardCycle(MTGCardInstance * card);
-	virtual Targetable * getTarget(int target);
+    virtual Targetable * getTarget(int target);
 };
 
 //Event when a card's "defenser" status changes
@@ -219,9 +220,9 @@ struct WEventBlockersChosen : public WEvent {
 };
 
 struct WEventcardDraw : public WEvent {
-	WEventcardDraw(Player * player,int nb_cards);
-	Player * player;
-	int nb_cards;
+    WEventcardDraw(Player * player,int nb_cards);
+    Player * player;
+    int nb_cards;
     using WEvent::getTarget;
     virtual Targetable * getTarget(Player * player);
 };
@@ -248,6 +249,14 @@ struct WEventCombatStepChange : public WEvent
   WEventCombatStepChange(CombatStep);
 };
 
+//Event when a mana is engaged
+//color : color
+struct WEventEngageManaExtra : public WEvent {
+  int color;
+  MTGCardInstance* card;
+  ManaPool * destination;
+  WEventEngageManaExtra(int color, MTGCardInstance* card, ManaPool * destination);
+};
 
 //Event when a mana is engaged
 //color : color
@@ -271,6 +280,30 @@ struct WEventConsumeMana : public WEvent {
 struct WEventEmptyManaPool : public WEvent {
   ManaPool * source;
   WEventEmptyManaPool(ManaPool * source);
+};
+
+//event when card-equipment unattached
+struct WEventCardUnattached : public WEventCardUpdate {
+  WEventCardUnattached(MTGCardInstance * card);
+    virtual Targetable * getTarget(int target);
+};
+
+//event when card-equipment attached/equipped
+struct WEventCardEquipped : public WEventCardUpdate {
+  WEventCardEquipped(MTGCardInstance * card);
+    virtual Targetable * getTarget(int target);
+};
+
+//event when card moves from player/opponent battlefield to player/opponent battlefield
+struct WEventCardControllerChange : public WEventCardUpdate {
+  WEventCardControllerChange(MTGCardInstance * card);
+    virtual Targetable * getTarget(int target);
+};
+
+//event when card transforms
+struct WEventCardTransforms : public WEventCardUpdate {
+  WEventCardTransforms(MTGCardInstance * card);
+    virtual Targetable * getTarget(int target);
 };
 
 std::ostream& operator<<(std::ostream&, const WEvent&);
